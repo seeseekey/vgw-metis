@@ -1,6 +1,9 @@
 <?php
 use WP_VGWORT\Db_Pixels;
 function get_posts_count() {
+    if ( ! current_user_can( 'edit_posts' ) ) {
+        wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
+    }
 
     // Check for nonce security
     if (!check_ajax_referer('wp_metis_metabox_nonce', 'security', false)) {
