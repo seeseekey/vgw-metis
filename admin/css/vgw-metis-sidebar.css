@@ -1,0 +1,22 @@
+.vgw-metis-radio-control { margin-bottom: 16px; }
+.vgw-metis-radio-control .components-flex { flex-direction: row; }
+.vgw-metis-radio-control .components-radio-control__option {
+    display: inline-flex; /* Makes each option (label and radio button) display inline */
+    align-items: center; /* Aligns the radio button and label vertically in the center */
+    margin-right: 15px; /* Space between the radio button options */
+    width: 50%;
+}
+
+.vgw-metis-radio-control .components-radio-control__input {
+    margin-right: 5px; /* Space between the radio button and its label */
+}
+
+.components-base-control__label {
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+    text-transform: uppercase;
+    display: inline-block;
+    margin-bottom: calc(8px);
+    padding: 0px;
+}
