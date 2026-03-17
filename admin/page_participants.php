@@ -26,7 +26,7 @@ class Page_Participants extends Page {
 	public function __construct( object $plugin ) {
 		parent::__construct( $plugin );
 
-        // add submenu item
+		// add submenu item
 		add_action( 'admin_menu', [$this, 'add_participants_submenu'] );
 
 		$this->list_table_participants = new List_Table_Participants();
@@ -92,12 +92,12 @@ class Page_Participants extends Page {
 	public function participant_save(): void {
 		// Security: Verify nonce
 		if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'] ?? '', 'participant_save_nonce' ) ) {
-			wp_die( 'Security check failed' );
+			wp_send_json_error( [ 'message' => esc_html__( 'Security check failed', 'vgw-metis' ) ], 400 );
 		}
 
 		$wp_user          = true;
 		$return_value     = false;
-		
+
 		// Security: Sanitize all input data
 		$participant_data = (object) [
 			'id'          => isset( $_REQUEST['data']['id'] ) ? absint( $_REQUEST['data']['id'] ) : null,
@@ -119,7 +119,7 @@ class Page_Participants extends Page {
 				}
 			}
 		}
-		
+
 		// Send JSON response
 		if ( $return_value && $wp_user ) {
 			wp_send_json_success( $return_value );
@@ -136,13 +136,13 @@ class Page_Participants extends Page {
 	public function participant_delete( bool $force_delete = false ): int|null {
 		// Security: Verify nonce
 		if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'] ?? '', 'participant_delete_nonce' ) ) {
-			wp_die( 'Security check failed' );
+			wp_send_json_error( [ 'message' => esc_html__( 'Security check failed', 'vgw-metis' ) ], 400 );
 		}
 
 		$id = (int) $_REQUEST['id'] ;
-		
+
 		if ( $id === 0 ) {
-			return wp_send_json_error( [ 'message' => 'Invalid participant ID' ] );
+			wp_send_json_error( [ 'message' => 'Invalid participant ID' ] );
 		}
 
 		if ( $force_delete == false ) {
@@ -150,7 +150,7 @@ class Page_Participants extends Page {
 			// Participant which comes from wp user only can be deleted
 			// by deleting wordpress user
 			if ( $participant->wp_user != '' ) {
-				return wp_send_json_error( [ 'message' => esc_html__( 'Beteiligte mit Benutzernamen können nur über Wordpress Benutzer gelöscht werden!', 'vgw-metis' ) ] );
+				wp_send_json_error( [ 'message' => esc_html__( 'Beteiligte mit Benutzernamen können nur über Wordpress Benutzer gelöscht werden!', 'vgw-metis' ) ] );
 			}
 		}
 
