@@ -72,7 +72,7 @@ class List_Table {
 	 */
 	public function display(): void {
 		$this->html_output = $this->create_table();
-		echo( $this->html_output );
+		echo $this->html_output; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 
 	/**
@@ -84,7 +84,7 @@ class List_Table {
 		$header = '<thead><tr>';
 		foreach ( $this->columns as $col ) {
 			$header = $header . '<th>';
-			$header = $header . $col->label;
+			$header = $header . esc_html( $col->label );
 			$header = $header . '</th>';
 		}
 		// Add Action column
@@ -148,7 +148,7 @@ class List_Table {
 		$footer = '<tfoot><tr>';
 		foreach ( $this->columns as $col ) {
 			$footer = $footer . '<th>';
-			$footer = $footer . $col->label;
+			$footer = $footer . esc_html( $col->label );
 			$footer = $footer . '</th>';
 		}
 
