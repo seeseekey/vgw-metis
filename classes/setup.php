@@ -48,6 +48,7 @@ class Setup {
 		}
 		Services::initialize_all_posts();
 		Services::initialize_participants_from_wp_users();
+		Cron::schedule();
 	}
 
 	/**
@@ -139,12 +140,10 @@ class Setup {
 	/**
 	 * deactivate action
 	 *
-	 * nothing to do for us now
-	 *
 	 * @return void
 	 */
 	public function deactivate(): void {
-
+		Cron::unschedule();
 	}
 
 
@@ -155,6 +154,8 @@ class Setup {
 	 */
 	public static function uninstall(): \WP_Error|null {
 		global $wpdb;
+
+		Cron::unschedule();
 
 		// delete tables
 		$table_name = $wpdb->base_prefix . "metis_pixels";
