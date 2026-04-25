@@ -1,5 +1,5 @@
 === VG WORT METIS ===
-Contributors: vgwort
+Contributors: vgwort, 2ndkauboy, seeseekey
 Tags: vgwort, metis, tom, zählmarke, urheber, autor, verlag, meldung, ausschüttung, pixel
 Requires at least: 6.0
 Tested up to: 6.8
