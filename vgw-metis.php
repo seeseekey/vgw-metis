@@ -7,7 +7,7 @@
  * Plugin Name: VGW Metis
  * Description: WordPress-Plugin zur Verwaltung von Text-Zählmarken für das METIS Verfahren der
  * Verwertungsgesellschaft WORT.
- * Version: 2.0.1
+ * Version: 2.1.0
  * Requires at least: 6.0
  * Requires PHP: 8.0
  * Author: Verwertungsgesellschaft WORT

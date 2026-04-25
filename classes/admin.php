@@ -139,16 +139,9 @@ class Admin {
 		// delete participant after WordPress user is deleted
 		add_action( 'delete_user', [ $this, 'participant_delete' ], 10, 1 );
 
-		// schedule hook for timing
-		add_filter( 'cron_schedules', [ $this, 'add_cron_jobs' ] );
-		// schedule and call the cron hook for every day
-		add_action( 'do_cron_hook', [ $this, 'do_cron_call' ] );
 		// add delete hook to disable pixel
 		add_action( 'delete_post', '\WP_VGWORT\Services::disable_pixel_by_post_id', 10, 2 );
 
-		if ( ! wp_next_scheduled( 'do_cron_hook' ) ) {
-			wp_schedule_event( time(), 'everyday', 'do_cron_hook' );
-		}
 		// init metaboxes > load needed actions
 		new Metabox( $this->plugin );
 	}
@@ -521,32 +514,6 @@ class Admin {
 		}
 
 		return true;
-	}
-
-
-	/**
-	 * Schedule cron job for everyday
-	 *
-	 * @param $schedules
-	 *
-	 * @return array
-	 */
-	public function add_cron_jobs( $schedules ): array {
-		$schedules['everyday'] = array(
-			'interval' => 60 * 60 * 24, // time in seconds
-			'display'  => 'Every Day'
-		);
-
-		return $schedules;
-	}
-
-	/**
-	 * Will be called every day from scheduled hook
-	 *
-	 * @return void
-	 */
-	public function do_cron_call(): void {
-		Services::check_all_pixels();
 	}
 
 }
