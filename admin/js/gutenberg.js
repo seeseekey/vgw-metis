@@ -54,6 +54,7 @@
                     const data = new FormData();
                     data.append('action', 'gutenberg_save_post');
                     data.append('post_id', post.id);
+                    data.append('security', wp_metis_gutenberg_obj.nonce);
                     fetch(ajaxurl, {
                         method: 'POST',
                         body: data,
@@ -85,4 +86,3 @@
         }
     });
 }(jQuery, window, document));
-

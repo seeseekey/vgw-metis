@@ -20,9 +20,7 @@ class Scan_Services extends Services {
 			// Check if the pixel is the same as in HTML
 			if ($assignedPixel != null) {
 				if($assignedPixel->public_identification_id != $pixel->get_public_identification_id()) {
-					Db_Pixels::remove_pixel_from_post( $assignedPixel->public_identification_id, $post->ID );
-					$this->_log .= "Removing old pixel[" . $assignedPixel->public_identification_id . "] from post '" . $post->post_title . "'.\n";
-					if (Db_Pixels::assign_pixel_to_post($pixel->get_public_identification_id(), $post->ID)) {
+					if (Db_Pixels::replace_pixel_for_post($pixel->get_public_identification_id(), $post->ID)) {
 						$this->_log .= "New pixel[" . $pixel->get_public_identification_id() . "] reassigned to post '" . $post->post_title . "'.\n";
 						$this->_new_assigned_pixels++;
 						return Assignment::REASSIGNED;

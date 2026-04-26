@@ -43,7 +43,7 @@ class Metabox {
 		// load needed js
 		add_action('admin_enqueue_scripts', [ $this, 'enqueue_script' ]);
 		// register wp ajax action for manually assigning a pixel
-		add_action('wp_ajax_wp_metis_metabox_manual_assign_pixel', [ $this, 'manual_assign_pixel_action' ]);
+		add_action('wp_ajax_wp_metis_metabox_manual_assign_pixel', [ $this, 'manual_assign_pixel_ajax' ]);
 		// register wp ajax action for checking validity & ownership of a pixel
 		add_action('wp_ajax_wp_metis_metabox_check_validity_and_ownership', [
 			$this,
@@ -114,10 +114,12 @@ class Metabox {
 		$posts_count = DB_Pixels::get_assigned_posts_count($public_id);
 
 		?>
-        <div class="wp_metis_metabox <?php echo $isNew ? 'new' : 'edit'; ?>">
-			<?php if ($isNew) : ?>
-                <p class="wp_metis_metabox_auto_add">
-                    <label><?php esc_html_e('Zählmarke automatisch zuweisen', 'vgw-metis'); ?></label>
+	        <div class="wp_metis_metabox <?php echo $isNew ? 'new' : 'edit'; ?>">
+                <?php wp_nonce_field( 'wp_metis_save_metabox', 'wp_metis_metabox_nonce' ); ?>
+
+				<?php if ($isNew) : ?>
+	                <p class="wp_metis_metabox_auto_add">
+	                    <label><?php esc_html_e('Zählmarke automatisch zuweisen', 'vgw-metis'); ?></label>
                     <input type="radio" name="wp_metis_metabox_auto_add" id="wp_metis_metabox_auto_add_yes"
                            value="yes" <?php checked('yes', $auto_add_setting); ?>>
                     <label for="wp_metis_metabox_auto_add_yes"><?php esc_html_e('Ja'); ?></label>
@@ -261,8 +263,32 @@ class Metabox {
 	 * @return void
 	 */
 	public function save_metis_metabox(int $post_id): void {
+		if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) ) {
+			return;
+		}
+
+		$post = get_post( $post_id );
+
+		if ( ! $post || ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
+			return;
+		}
+
+		$nonce = isset( $_POST['wp_metis_metabox_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['wp_metis_metabox_nonce'] ) ) : '';
+
+		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'wp_metis_save_metabox' ) ) {
+			return;
+		}
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return;
+		}
+
+		$metabox_action = isset( $_GET['wp_metis_metabox_action'] ) ? sanitize_key( wp_unslash( $_GET['wp_metis_metabox_action'] ) ) : '';
+		$auto_add       = isset( $_POST['wp_metis_metabox_auto_add'] ) ? sanitize_key( wp_unslash( $_POST['wp_metis_metabox_auto_add'] ) ) : '';
+		$text_type      = isset( $_POST['wp_metis_metabox_text_type'] ) ? sanitize_key( wp_unslash( $_POST['wp_metis_metabox_text_type'] ) ) : '';
+
 		// remove action
-		if (array_key_exists('wp_metis_metabox_action', $_GET) && $_GET['wp_metis_metabox_action'] == 'remove_pixel') {
+		if ( $metabox_action === 'remove_pixel' ) {
 
 			if (Assignment_Services::unassign_pixel_from_post($post_id)) {
 				// display success
@@ -274,10 +300,7 @@ class Metabox {
 		}
 
 		// do we need to assign a free pixel?
-		if (
-			(array_key_exists('wp_metis_metabox_action', $_GET) && $_GET['wp_metis_metabox_action'] === 'assign_pixel') ||
-			(array_key_exists('wp_metis_metabox_auto_add', $_POST) && $_POST['wp_metis_metabox_auto_add'] === 'yes')
-		) {
+		if ( $metabox_action === 'assign_pixel' || $auto_add === 'yes' ) {
 			// guarantee that we have free pixels
 
 			$order_result = Services::order_pixels_if_needed();
@@ -286,10 +309,7 @@ class Metabox {
                 // TODO add error notice if order pixels fails
             }
 
-			$post = get_post($post_id);
-
-			// dont assign on auto save / revisions
-			if (($post->post_status === 'publish' || $post->post_status === 'draft') && $post->post_type !== 'revision') {
+			if ($post->post_status === 'publish' || $post->post_status === 'draft') {
 				if (Assignment_Services::assign_pixel_to_post($post_id)) {
 					// display success
 					// TODO AJAX Success Message
@@ -301,13 +321,13 @@ class Metabox {
 		}
 
 		// save text type
-		if (array_key_exists('wp_metis_metabox_text_type', $_POST) &&
-		     in_array(strtolower($_POST['wp_metis_metabox_text_type']), array(
-				     Common::TEXT_TYPE_DEFAULT,
-				     Common::TEXT_TYPE_LYRIC
-			    )
+		if ($text_type !== '' &&
+		     in_array(strtolower($text_type), array(
+					     Common::TEXT_TYPE_DEFAULT,
+					     Common::TEXT_TYPE_LYRIC
+				    )
 		)) {
-			update_post_meta((int) $post_id, '_metis_text_type', sanitize_key($_POST['wp_metis_metabox_text_type']));
+			update_post_meta((int) $post_id, '_metis_text_type', $text_type);
 		}
 	}
 
@@ -316,221 +336,134 @@ class Metabox {
 	 *
 	 * @param int $post_id the post id
 	 *
-	 * @return void
+	 * @return array
 	 */
-	public function automatic_assign_pixel_action(): void {
-		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
+	public function automatic_assign_pixel_action( int $post_id ): array {
+		$result = Assignment_Services::handle_pixel_assignment( $post_id, null );
+		$status = $result['status'] ?? Assignment::FAILED;
+
+		if ( in_array( $status, [ Assignment::ASSIGNED, Assignment::REASSIGNED, Assignment::REACTIVATED ], true ) ) {
+			$this->updatePostHistory( $post_id );
+			return $this->getAssignedPixelResponse( $post_id );
 		}
 
-		// Check for nonce security
-	    if (!check_ajax_referer('wp_metis_metabox_nonce', 'security', false)) {
-	        wp_send_json_error(array('message' => 'Nonce-Überprüfung fehlgeschlagen.'));
-	        wp_die();  // Terminate execution if nonce fails
-	    }
-
-		if (empty($_SERVER['HTTP_X_REQUESTED_WITH']) || 
-            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) !== 'xmlhttprequest') {
-			echo 'invalid-request';
-			wp_die();
-        }
-
-		// Ensure the post ID is received
-	    if (isset($_REQUEST['post_id'])) {
-	        $post_id = (int)sanitize_key($_REQUEST['post_id']);
-
-			$result = Assignment_Services::handle_pixel_assignment($post_id, null);
-			if($result['status'] == Assignment::ASSIGNED) {
-				// If the assignment was successful, update the post history
-				$this->updatePostHistory();
-			} else if($result['status'] == Assignment::REASSIGNED || $result['status'] == Assignment::REACTIVATED) {
-				// If the assignment was successful, update the post history
-				$this->updatePostHistory();
-	            $pixelData = Assignment_Services::get_pixel_for_post($post_id);
-	            wp_send_json_success(array(
-	                'public_identification_id' => $pixelData->public_identification_id,
-	                'private_identification_id' => $pixelData->private_identification_id,
-	                'message' => 'Pixel wurde erfolgreich dem Beitrag zugewiesen.'
-	            ));
-	        } else if ($result['status'] == Assignment::FAILED) {
-	            wp_send_json_error(array('message' => 'Beim Zuweisen ist ein Fehler aufgetreten.'));
-	        } else if ($result['status'] == Assignment::SKIPPED) {
-	            wp_send_json_success(array(
-	                'message' => 'Der Pixel ist dem Beitrag bereits zugewiesen.'
-	            ));
-	        }
-	        // Save text type
-	        if (isset($_POST['wp_metis_metabox_text_type'])) {
-	            $this->save_text_type($post_id);
-	        }
-		} else {
-	        wp_send_json_error(array('message' => 'Ungültige Beitrags-ID.'));
-	    }
-
-	}
-
-	private function updatePostHistory() {
-		if (isset($_REQUEST['post_id'])) {
-	        $post_id = (int)sanitize_key($_REQUEST['post_id']);
-			// set text type accordingly
-    		
-    		// set text length accordingly
-    		Services::set_text_length( $post_id );
-
-		    // check if we need to create a new text limit change record
-		    $current_text_length = (int) get_post_meta( $post_id, "_metis_text_length", true );
-		    $pixel               = Db_Pixels::get_pixel_by_post_id( $post_id );
-		    if (is_object($pixel)) {
-		        $public_identification_id = $pixel->public_identification_id;
-		        $private_identification_id = $pixel->private_identification_id; // assuming it's available
-		    } else {
-		        $public_identification_id = '';
-		        $private_identification_id = '';
-		    }
-
-		    Services::add_text_limit_change_if_needed( $post_id, $public_identification_id, $current_text_length );
+		if ( Assignment::SKIPPED === $status ) {
+			return [
+				'message' => esc_html__( 'Pixel is already assigned to this post.', 'vgw-metis' ),
+			];
 		}
+
+		wp_send_json_error( [ 'message' => esc_html__( 'Unable to assign pixel.', 'vgw-metis' ) ], 500 );
 	}
 
-	public function set_post_metadata() {
-		if (isset($_REQUEST['post_id'])) {
-			$post_id = (int)sanitize_key($_REQUEST['post_id']);
-		// save text type
-			if (array_key_exists('wp_metis_metabox_text_type', $_POST) &&
-				in_array(strtolower($_POST['wp_metis_metabox_text_type']), array(
-						Common::TEXT_TYPE_DEFAULT,
-						Common::TEXT_TYPE_LYRIC
-				   )
-			)) {
-			   update_post_meta((int) $post_id, '_metis_text_type', sanitize_key($_POST['wp_metis_metabox_text_type']));
-			}
+	private function getAssignedPixelResponse( int $post_id ): array {
+		$pixelData = Assignment_Services::get_pixel_for_post( $post_id );
+
+		if ( ! $pixelData ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Pixel assignment could not be verified.', 'vgw-metis' ) ], 500 );
+		}
+
+		return [
+			'public_identification_id'  => $pixelData->public_identification_id,
+			'private_identification_id' => $pixelData->private_identification_id,
+			'message'                   => esc_html__( 'Pixel assigned successfully.', 'vgw-metis' ),
+		];
+	}
+
+	private function updatePostHistory( int $post_id ) {
+		Services::set_text_length( $post_id );
+
+	    // check if we need to create a new text limit change record
+	    $current_text_length = (int) get_post_meta( $post_id, "_metis_text_length", true );
+	    $pixel               = Db_Pixels::get_pixel_by_post_id( $post_id );
+	    if (is_object($pixel)) {
+	        $public_identification_id = $pixel->public_identification_id;
+	    } else {
+	        $public_identification_id = '';
+	    }
+
+	    Services::add_text_limit_change_if_needed( $post_id, $public_identification_id, $current_text_length );
+	}
+
+	public function set_post_metadata( int $post_id, string $text_type ): void {
+		if ($text_type !== '' &&
+			in_array(strtolower($text_type), array(
+					Common::TEXT_TYPE_DEFAULT,
+					Common::TEXT_TYPE_LYRIC
+			   )
+		)) {
+		   update_post_meta((int) $post_id, '_metis_text_type', $text_type);
 		}
 	}
 
 	/**
-	 * The WP Ajax action for manually assigning a pixel
+	 * The WP Ajax action for manually assigning a pixel.
 	 *
 	 * @return void
 	 */
-	public function manual_assign_pixel_action(): void {
-		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
+	public function manual_assign_pixel_ajax(): void {
+		vgw_metis_verify_metabox_nonce( 'nonce' );
+
+		if ( empty($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) !== 'xmlhttprequest' ) {
+			vgw_metis_send_invalid_request();
 		}
 
-		// wp nonce check
-		if (! wp_verify_nonce($_REQUEST['nonce'], 'wp_metis_metabox_nonce')) {
-			wp_die('WP Nonce incorrect');
+		$post_id                  = vgw_metis_get_authorized_post_id();
+		$request_data             = wp_unslash( $_REQUEST );
+		$public_identification_id = isset( $request_data['public_identification_id'] ) && is_scalar( $request_data['public_identification_id'] ) ? sanitize_text_field( (string) $request_data['public_identification_id'] ) : '';
+
+		$response = $this->manual_assign_pixel_action( $post_id, $public_identification_id );
+
+		if ( $response['assigned'] ) {
+			wp_send_json_success( $response );
 		}
 
-		// make sure we can only call this from ajax request
-		if (! empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-			// get and sanitize post_id
-			$post_id = (int) sanitize_key($_REQUEST['post_id']);
-			// get and sanitize new public identification id
-			$public_identification_id = sanitize_key($_REQUEST['public_identification_id']);
+		wp_send_json_error( $response );
+	}
 
-			// get current pixel (if one)
-			$current_pixel = DB_Pixels::get_pixel_by_post_id($post_id);
-			// get new pixel from out db (if one)
-			$new_pixel = DB_Pixels::get_pixel_by_public_identification_id($public_identification_id);
+	public function manual_assign_pixel_action( int $post_id, string $public_identification_id ): array {
+		if ( ! $public_identification_id || ! Common::is_valid_pixel_id_format( $public_identification_id ) ) {
+			return $this->createManualAssignmentResponse( 'invalid-format' );
+		}
 
-			// check if the new pixel is already in our db
-			if ($new_pixel) {
-				// new pixel is already in db, but is it disabled?
-				if ($new_pixel->disabled) {
-					echo 'error-new-pixel-is-disabled';
-					wp_die();
-				}
+		$current_pixel = DB_Pixels::get_pixel_by_post_id( $post_id );
+		$new_pixel     = DB_Pixels::get_pixel_by_public_identification_id( $public_identification_id );
 
-				// no attached post id or post id different from the current one?
-				if (! $new_pixel->post_id || $new_pixel->post_id != $post_id) {
-					// remove post association current from pixel, if we have one
-					if ($current_pixel && $current_pixel->public_identification_id && ! DB_Pixels::remove_pixel_from_post($current_pixel->public_identification_id, $post_id)) {
-						echo 'error-remove-pixel-from-post';
-						wp_die();
-					}
+		if ( $new_pixel && $new_pixel->disabled ) {
+			return $this->createManualAssignmentResponse( 'error-new-pixel-is-disabled' );
+		}
 
-					// disable current pixel
-					// Todo instead of 5 params > Object for get all pixels search
+		if ( $new_pixel && $new_pixel->post_id && (int) $new_pixel->post_id === $post_id ) {
+			return $this->createManualAssignmentResponse( 'error-has-same-post-id' );
+		}
 
-					if ($current_pixel && $current_pixel->public_identification_id) {
-						$current_pixel_posts = DB_Pixels::get_all_pixels(null, null, null, $current_pixel->public_identification_id);
-						$count               = $current_pixel_posts ? count($current_pixel_posts) : 0;
-						// disable current pixel only when new pixel has no attached posts
-						if ($count === 0) {
-							if (! DB_Pixels::disable_pixel($current_pixel->public_identification_id)) {
-								echo 'error-disable-pixel';
-								wp_die();
-							}
-						}
-					}
+		if ( ! $new_pixel && ! Services::insert_one_manual_pixel( $public_identification_id ) ) {
+			return $this->createManualAssignmentResponse( 'error-inserting-pixel' );
+		}
 
-					// finally assign new pixel to post
-					if (DB_Pixels::assign_pixel_to_post($public_identification_id, $post_id)) {
-						
-						// If the assignment was successful, update the post history
-						$this->updatePostHistory();
-						
-						if (DB_Pixels::get_assigned_posts_count($public_identification_id) > 1)
-							echo 'multiple-assignment';
-						else
-							echo 'success';
-						
-						// check if we need to create a new text limit change record
-    					$current_text_length = (int) get_post_meta( $post_id, "_metis_text_length", true );
-						Services::add_text_limit_change_if_needed( $post_id, $public_identification_id, $current_text_length );
-					} else {
-						echo 'error-assign-to-post-failed';
-					}
-				} else {
-					// we know it has the same post id > error
-					echo 'error-has-same-post-id';
-				}
-				wp_die();
-			} else {
-				// remove post association from current pixel (if one)
-				if ($current_pixel && $current_pixel->public_identification_id && ! DB_Pixels::remove_pixel_from_post($current_pixel->public_identification_id, $post_id)) {
-					echo 'error-remove-pixel-from-post';
-					wp_die();
-				}
+		if ( ! DB_Pixels::replace_pixel_for_post( $public_identification_id, $post_id ) ) {
+			return $this->createManualAssignmentResponse( 'error-assign-to-post-failed' );
+		}
 
-				if ($current_pixel && $current_pixel->public_identification_id) {
-					$current_pixel_posts = DB_Pixels::get_all_pixels(null, null, null, $current_pixel->public_identification_id);
-					$count               = $current_pixel_posts ? count($current_pixel_posts) : 0;
-					// disable current pixel only when new pixel has no attached posts
-					if ($count === 0) {
-						if (! DB_Pixels::disable_pixel($current_pixel->public_identification_id)) {
-							echo 'error-disable-pixel';
-							wp_die();
-						}
-					}
-				}
+		$this->updatePostHistory( $post_id );
 
-				// add new pixel
-				if (! Services::insert_one_manual_pixel($public_identification_id)) {
-					echo 'error-inserting-pixel';
-					wp_die();
-				}
-
-				// assign new pixel to post
-				if (DB_Pixels::assign_pixel_to_post($public_identification_id, $post_id)) {
-					if (DB_Pixels::get_assigned_posts_count($public_identification_id) > 1)
-						echo 'multiple-assignment';
-					else
-						echo 'success';
-
-					// check if we need to create a new text limit change record
-					$current_text_length = (int) get_post_meta( $post_id, "_metis_text_length", true );
-					Services::add_text_limit_change_if_needed( $post_id, $public_identification_id, $current_text_length );
-
-				} else {
-					echo 'error-assign-to-post-failed';
-				}
-
-				wp_die();
+		if ( $current_pixel && $current_pixel->public_identification_id ) {
+			$current_pixel_posts = DB_Pixels::get_all_pixels( null, null, null, $current_pixel->public_identification_id );
+			$count               = $current_pixel_posts ? count( $current_pixel_posts ) : 0;
+			if ( $count === 0 && DB_Pixels::disable_pixel( $current_pixel->public_identification_id ) === false ) {
+				error_log( sprintf( 'VGW Metis: Failed to disable replaced pixel %s.', $current_pixel->public_identification_id ) );
 			}
 		}
-		wp_die();
+
+		$code = DB_Pixels::get_assigned_posts_count( $public_identification_id ) > 1 ? 'multiple-assignment' : 'success';
+		return $this->createManualAssignmentResponse( $code, true );
+	}
+
+	private function createManualAssignmentResponse( string $code, bool $assigned = false ): array {
+		return [
+			'assigned' => $assigned,
+			'code'     => $code,
+		];
 	}
 
 	/**
@@ -539,22 +472,19 @@ class Metabox {
 	 * @return void
 	 */
 	public static function is_valid_and_ownership_check(): void {
-		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
-		}
-
 		// wp nonce check
-		if (! wp_verify_nonce($_REQUEST['nonce'], "wp_metis_metabox_nonce")) {
-			exit("WP Nonce incorrect");
-		}
+		vgw_metis_verify_metabox_nonce( 'nonce' );
+		vgw_metis_get_authorized_post_id();
 
 		// make sure we can only call this from ajax request
 		if (! empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+			$request_data = wp_unslash( $_REQUEST );
+
 			// make sure the pid is set
-			if (isset($_REQUEST['public_identification_id'])) {
+			if (isset($request_data['public_identification_id']) && is_scalar( $request_data['public_identification_id'] )) {
 
 				// check validity and ownership via api
-				$result = Services::is_valid_and_ownership_check(sanitize_key($_REQUEST['public_identification_id']));
+				$result = Services::is_valid_and_ownership_check( sanitize_key( (string) $request_data['public_identification_id'] ) );
 
 				// if we get a result, echo the status
 				if ($result) {

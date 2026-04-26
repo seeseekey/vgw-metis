@@ -44,8 +44,9 @@
                 }, function (data) {
                     // handle response data, show success or error messages
                     console.log(data);
-                    if (data) {
-                        switch (data) {
+                    const code = data && data.data ? data.data.code : null;
+                    if (code) {
+                        switch (code) {
                             case 'invalid-format':
                                 alert(wp_metis_metabox_obj.invalid_format);
                                 break;
@@ -76,20 +77,24 @@
                             case 'error-new-pixel-is-disabled':
                                 alert(wp_metis_metabox_obj.error_new_pixel_is_disabled);
                                 break;
+                            case 'error-disable-pixel':
+                                alert(wp_metis_metabox_obj.error_disable_pixel);
+                                break;
                             case 'error-inserting-pixel':
                                 alert(wp_metis_metabox_obj.error_inserting_pixel);
                                 break;
                             case 'multiple-assignment':
-                                // alert success message and save / reload page
                                 alert(wp_metis_metabox_obj.multiple_assignment);
                                 alert(wp_metis_metabox_obj.success);
                                 document.getElementById('publish').click();
                                 break;
                             case 'success':
-                                // alert success message and save / reload page
                                 alert(wp_metis_metabox_obj.success);
                                 document.getElementById('publish').click();
-                            break;
+                                break;
+                            default:
+                                alert(wp_metis_metabox_obj.error_general);
+                                break;
                         }
                     } else {
                         alert(wp_metis_metabox_obj.error_general);

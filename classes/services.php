@@ -84,7 +84,7 @@ class Services {
 					// If pixel does not exists in the database it needs to be inserted
 					$statuses = Tom_Pixels::check_pixel_state( [$pixel->get_public_identification_id()] );
 
-					if (count($statuses) == 1) {
+					if ( is_array( $statuses ) && count( $statuses ) == 1 ) {
 						$pixel->set_source(Common::SOURCE_SCANWORDPRESS);
 						if($statuses[0]->state == 'VALID')
 							$pixel->set_private_identification_id($statuses[0]->privateUID);
@@ -119,7 +119,7 @@ class Services {
 	public static function check_all_pixels(): bool {
 		$pixel_for_check = DB_Pixels::get_all_pixels();
 		$result = Tom_Pixels::check_pixel_state( array_column( $pixel_for_check, 'public_identification_id' ) );
-		if ( count( $result ) ) {
+		if ( is_array( $result ) && count( $result ) ) {
 			foreach ( $result as $pixel ) {
 				self::update_pixel_data_from_api( $pixel );
 			}
@@ -142,7 +142,11 @@ class Services {
 		// insert if valid (owner or no owner doesn't matter)
 
 		// Insert pixel with ownership
-		if ( count( $result ) && $result[0]->state == Common::API_STATE_VALID ) {
+		if ( ! is_array( $result ) || ! count( $result ) ) {
+			return false;
+		}
+
+		if ( $result[0]->state == Common::API_STATE_VALID ) {
 			$checked_pixel = $result[0];
 			$new_pixel     = new Pixel( $checked_pixel );
 			$new_pixel->set_source( Common::SOURCE_MANUAL );
@@ -177,7 +181,11 @@ class Services {
 		}
 
 		$result = Tom_Pixels::check_pixel_state([$public_identification_id]);
-        return count($result) ? $result[0]->state : false;
+		if ( ! is_array( $result ) || ! count( $result ) ) {
+			return false;
+		}
+
+		return $result[0]->state;
 	}
 
 	/**

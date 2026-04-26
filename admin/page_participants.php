@@ -91,12 +91,16 @@ class Page_Participants extends Page {
 	 */
 	public function participant_save(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
+			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied.', 'vgw-metis' ) ], 403 );
 		}
 
+		$request_data = wp_unslash( $_POST );
+		$nonce        = isset( $request_data['_wpnonce'] ) && is_scalar( $request_data['_wpnonce'] ) ? (string) $request_data['_wpnonce'] : '';
+		$data         = isset( $request_data['data'] ) && is_array( $request_data['data'] ) ? $request_data['data'] : [];
+
 		// Security: Verify nonce
-		if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'] ?? '', 'participant_save_nonce' ) ) {
-			wp_die( 'Security check failed' );
+		if ( ! wp_verify_nonce( $nonce, 'participant_save_nonce' ) ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Invalid request.', 'vgw-metis' ) ], 400 );
 		}
 
 		$wp_user          = true;
@@ -104,12 +108,12 @@ class Page_Participants extends Page {
 		
 		// Security: Sanitize all input data
 		$participant_data = (object) [
-			'id'          => isset( $_REQUEST['data']['id'] ) ? absint( $_REQUEST['data']['id'] ) : null,
-			'first_name'  => isset( $_REQUEST['data']['first_name'] ) ? wp_kses( $_REQUEST['data']['first_name'], [] ) : '',
-			'last_name'   => isset( $_REQUEST['data']['last_name'] ) ? wp_kses( $_REQUEST['data']['last_name'], [] ) : '',
-			'file_number' => isset( $_REQUEST['data']['file_number'] ) ? sanitize_text_field( $_REQUEST['data']['file_number'] ) : '',
-			'involvement' => isset( $_REQUEST['data']['involvement'] ) ? sanitize_text_field( $_REQUEST['data']['involvement'] ) : '',
-			'wp_user'     => isset( $_REQUEST['data']['wp_user'] ) ? sanitize_user( $_REQUEST['data']['wp_user'] ) : ''
+			'id'          => isset( $data['id'] ) && is_scalar( $data['id'] ) ? absint( $data['id'] ) : null,
+			'first_name'  => isset( $data['first_name'] ) && is_scalar( $data['first_name'] ) ? wp_kses( (string) $data['first_name'], [] ) : '',
+			'last_name'   => isset( $data['last_name'] ) && is_scalar( $data['last_name'] ) ? wp_kses( (string) $data['last_name'], [] ) : '',
+			'file_number' => isset( $data['file_number'] ) && is_scalar( $data['file_number'] ) ? sanitize_text_field( (string) $data['file_number'] ) : '',
+			'involvement' => isset( $data['involvement'] ) && is_scalar( $data['involvement'] ) ? sanitize_text_field( (string) $data['involvement'] ) : '',
+			'wp_user'     => isset( $data['wp_user'] ) && is_scalar( $data['wp_user'] ) ? sanitize_user( (string) $data['wp_user'] ) : ''
 		];
 
 		if ( $return_value = Db_Participants::upsert_participant( $participant_data ) ) {
@@ -120,15 +124,19 @@ class Page_Participants extends Page {
 						'first_name' => $participant_data->first_name,
 						'last_name'  => $participant_data->last_name
 					] );
+
+					if ( is_wp_error( $wp_user ) ) {
+						wp_send_json_error( [ 'message' => esc_html__( 'Error while updating WordPress user.', 'vgw-metis' ) ], 500 );
+					}
 				}
 			}
 		}
-		
+
 		// Send JSON response
 		if ( $return_value && $wp_user ) {
 			wp_send_json_success( $return_value );
 		} else {
-			wp_send_json_error( 'Fehler beim Speichern' );
+			wp_send_json_error( [ 'message' => esc_html__( 'Error while saving.', 'vgw-metis' ) ] );
 		}
 	}
 
@@ -139,22 +147,27 @@ class Page_Participants extends Page {
 	 */
 	public function participant_delete( bool $force_delete = false ): int|null {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
+			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied.', 'vgw-metis' ) ], 403 );
 		}
+
+		$request_data = wp_unslash( $_POST );
+		$nonce        = isset( $request_data['_wpnonce'] ) && is_scalar( $request_data['_wpnonce'] ) ? (string) $request_data['_wpnonce'] : '';
+		$id           = isset( $request_data['id'] ) && is_scalar( $request_data['id'] ) ? absint( $request_data['id'] ) : 0;
 
 		// Security: Verify nonce
-		if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'] ?? '', 'participant_delete_nonce' ) ) {
-			wp_die( 'Security check failed' );
+		if ( ! wp_verify_nonce( $nonce, 'participant_delete_nonce' ) ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Invalid request.', 'vgw-metis' ) ], 400 );
 		}
 
-		$id = (int) $_REQUEST['id'] ;
-		
 		if ( $id === 0 ) {
-			return wp_send_json_error( [ 'message' => 'Invalid participant ID' ] );
+			return wp_send_json_error( [ 'message' => esc_html__( 'Invalid participant ID.', 'vgw-metis' ) ] );
 		}
 
 		if ( $force_delete == false ) {
 			$participant = Db_Participants::get_participant_by_id( $id );
+			if ( ! $participant ) {
+				return wp_send_json_error( [ 'message' => esc_html__( 'Invalid participant ID.', 'vgw-metis' ) ] );
+			}
 			// Participant which comes from wp user only can be deleted
 			// by deleting wordpress user
 			if ( $participant->wp_user != '' ) {
@@ -162,8 +175,17 @@ class Page_Participants extends Page {
 			}
 		}
 
-		return Db_Participants::delete_participant( $id );
+		$deleted = Db_Participants::delete_participant( $id );
+
+		if ( $deleted === false ) {
+			return wp_send_json_error( [ 'message' => esc_html__( 'Error while deleting participant.', 'vgw-metis' ) ], 500 );
+		}
+
+		if ( $deleted === 0 ) {
+			return wp_send_json_error( [ 'message' => esc_html__( 'Participant could not be found.', 'vgw-metis' ) ], 404 );
+		}
+
+		return wp_send_json_success( [ 'message' => esc_html__( 'Participant deleted successfully.', 'vgw-metis' ) ] );
 	}
 
 }
-

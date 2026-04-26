@@ -1,35 +1,22 @@
 <?php
 
-use WP_VGWORT\Common;
-use WP_VGWORT\Db_Pixels;
 use WP_VGWORT\Metabox;
-use WP_VGWORT\Services;
 
 function manually_assign_pixel_to_post_ajax() {
-    if ( ! current_user_can( 'edit_posts' ) ) {
-        wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
-    }
+    vgw_metis_verify_metabox_nonce( 'nonce' );
+    $post_id                  = vgw_metis_get_authorized_post_id( 'post' );
+    $post_data                = wp_unslash( $_POST );
+    $public_identification_id = isset( $post_data['public_identification_id'] ) && is_scalar( $post_data['public_identification_id'] ) ? sanitize_text_field( (string) $post_data['public_identification_id'] ) : '';
 
     $plugin = vgw_metis_get_instance();
 
-    $post_id = (int) $_POST['post_id'];
+    $metaBox = new Metabox( $plugin );
+    $response = $metaBox->manual_assign_pixel_action( $post_id, $public_identification_id );
 
-    // set text type accordingly
-    //Services::set_text_type( $post_id );
-    // set text length accordingly
-    Services::set_text_length( $post_id );
-
-    $pixel               = Db_Pixels::get_pixel_by_post_id( $post_id );
-    if (is_object($pixel)) {
-        $public_identification_id = $pixel->public_identification_id;
-        $private_identification_id = $pixel->private_identification_id; // assuming it's available
-    } else {
-        $public_identification_id = '';
-        $private_identification_id = '';
+    if ( $response['assigned'] ) {
+        wp_send_json_success( $response );
     }
 
-    $metaBox = new Metabox( $plugin );
-    $metaBox->manual_assign_pixel_action();
-    //$metaBox->set_post_metadata();
+    wp_send_json_error( $response );
 }
 add_action('wp_ajax_manually_assign_pixel_to_post', 'manually_assign_pixel_to_post_ajax');

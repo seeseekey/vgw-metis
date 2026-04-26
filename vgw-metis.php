@@ -71,6 +71,7 @@ function vgw_metis_get_instance(): WP_VGWORT\Plugin {
  */
 function vgw_metis_load_actions() {
     $actions_path = __DIR__ . '/includes/actions/';
+    require_once $actions_path . 'security.php';
 
     // Automatically include all PHP files from the actions folder
     foreach ( glob( $actions_path . '*.php' ) as $file ) {

@@ -80,8 +80,8 @@
                 setPixelAutoInsertForPost(VGWMetisAjax.autoAddPages === 'no' ? 'false' : 'true');
             }
 
-            if(publicPixelId != null) 
-                getPostsCount(publicPixelId);
+            if(publicPixelId && postId)
+                getPostsCount(publicPixelId, postId);
 
         }, []); // Empty dependency array ensures this only runs once, when the component mounts
         
@@ -112,8 +112,9 @@
                     nonce: nonce
                 }, function (data) {
                     // handle response data, show success or error messages
-                    if (data) {
-                        switch (data) {
+                    const code = data && data.data ? data.data.code : null;
+                    if (code) {
+                        switch (code) {
                             case 'invalid-format':
                                 alert(VGWMetisAjax.messages.invalid_format);
                                 break;
@@ -144,41 +145,46 @@
                             case 'error-new-pixel-is-disabled':
                                 alert(VGWMetisAjax.messages.error_new_pixel_is_disabled);
                                 break;
+                            case 'error-disable-pixel':
+                                alert(VGWMetisAjax.messages.error_disable_pixel);
+                                break;
                             case 'error-inserting-pixel':
                                 alert(VGWMetisAjax.messages.error_inserting_pixel);
                                 break;
                             case 'multiple-assignment':
-                                // alert success message and save / reload page
                                 alert(VGWMetisAjax.messages.multiple_assignment);
                                 alert(VGWMetisAjax.messages.success);
                                 setCurrentPublicPixelId(new_pid);
-                                if(new_pid != null) 
-                                    getPostsCount(new_pid);
+                                if(new_pid != null && post_id)
+                                    getPostsCount(new_pid, post_id);
                                 document.getElementById('publish').click();
                                 break;
                             case 'success':
-                                // alert success message and save / reload page
                                 alert(VGWMetisAjax.messages.success);
                                 setCurrentPublicPixelId(new_pid);
-                                if(new_pid != null) 
-                                    getPostsCount(new_pid);
+                                if(new_pid != null && post_id)
+                                    getPostsCount(new_pid, post_id);
                                 document.getElementById('publish').click();
-                            break;
+                                break;
+                            default:
+                                alert(VGWMetisAjax.messages.error_general);
+                                break;
                         }
                     } else {
-                        alert(wp_metis_metabox_obj.error_general);
+                        alert(VGWMetisAjax.messages.error_general);
                         return;
                     }
                 }
             );
         }
 
-        const getPostsCount = (publicIdentificationId) => {
+        const getPostsCount = (publicIdentificationId, postId) => {
             $.ajax({
                 url: VGWMetisAjax.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'get_posts_count',
+                    post_id: postId,
                     public_identification_id: publicIdentificationId,
                     security: VGWMetisAjax.nonce
                 },
@@ -233,17 +239,22 @@
                     action: 'remove_pixel_from_post',
                     post_id: postId,
                     security: VGWMetisAjax.nonce
-                },
-                success: function (response) {
-                    if (response.success) {
-                        setPrivatePixelId(null);
-                        setPublicPixelId(null);
-                    } else {
-                        console.log('Error:', response.data.message);  
-						alert(response.data.message);
-                    }
-                    alert(response.data.message);
-                },
+	                },
+	                success: function (response) {
+	                    const message = response.data && response.data.message ? response.data.message : null;
+	                    if (response.success) {
+	                        setPrivatePixelId(null);
+	                        setPublicPixelId(null);
+	                        if (message) {
+	                            alert(message);
+	                        }
+	                    } else {
+	                        console.log('Error:', message);
+	                        if (message) {
+	                            alert(message);
+	                        }
+	                    }
+	                },
                 error: function (xhr, status, error) {
                     console.log('AJAX Error:', error);
                     alert(error);

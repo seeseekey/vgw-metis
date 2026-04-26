@@ -130,9 +130,9 @@ namespace WP_VGWORT;
                 </th>
                 <td>
                     <textarea disabled
-                              id="text"><?php echo Services::get_striped_post_content( $this->post_id ); ?></textarea>
+                              id="text"><?php echo esc_textarea( Services::get_striped_post_content( $this->post_id ) ); ?></textarea>
                     <input type="hidden" name="text"
-                           value="<?php echo Services::get_striped_post_content( $this->post_id ); ?>"/>
+                           value="<?php echo esc_attr( Services::get_striped_post_content( $this->post_id ) ); ?>"/>
                 </td>
             </tr>
         </table>

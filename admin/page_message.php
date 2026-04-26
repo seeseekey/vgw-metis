@@ -74,9 +74,6 @@ class Page_Message extends Page {
         // add save message hook
         add_action('admin_post_wp_metis_save_message', [$this, 'save_message']);
 
-        // add load ai disclaimer text hook
-        add_action('admin_post_wp_metis_ai_disclaimer', [$this, 'load_ai_disclaimer']);
-
     }
 
 	/**
@@ -248,24 +245,44 @@ class Page_Message extends Page {
 	 */
 	public function save_message(): void {
 
+		$request_data = wp_unslash( $_REQUEST );
+		$post_data    = wp_unslash( $_POST );
+		$post_id      = isset( $request_data['post_id'] ) && is_scalar( $request_data['post_id'] ) ? (string) $request_data['post_id'] : '';
+		$nonce        = isset( $post_data['message-form-nonce'] ) && is_scalar( $post_data['message-form-nonce'] ) ? (string) $post_data['message-form-nonce'] : '';
+
 		// get post id
-		$this->post_id = empty( $_REQUEST['post_id'] ) ? 0 : (int) $_REQUEST['post_id'];
+		$this->post_id = empty( $post_id ) ? 0 : absint( $post_id );
 
 		// check form nonce
-		if ( empty( $_POST['message-form-nonce'] )
-		     || ! wp_verify_nonce( $_POST['message-form-nonce'], 'wp_metis_save_message' )
+		if ( empty( $nonce )
+		     || ! wp_verify_nonce( $nonce, 'wp_metis_save_message' )
 		) {
 			wp_redirect( admin_url( 'admin.php?page=metis-message&post_id=' . $this->post_id . '&notice=wp_metis_save_message_nonce_error' ) );
+			exit;
 		}
 
-        // sanitize form post data
-        $form_data = new \stdClass();
-        $form_data->private_identification_id = empty($_POST['private_identification_id']) ? null : sanitize_key($_POST['private_identification_id']);
-        $form_data->text_type = empty($_POST['text_type']) ? null : sanitize_key($_POST['text_type']);
-        $form_data->text_length = empty($_POST['text_length']) ? null : (int)$_POST['text_length'];
-        $form_data->permalink = empty($_POST['permalink']) ? null : $_POST['permalink'];
-        $form_data->aiDisclaimerAnswer = empty($_POST['ai_disclaimer_answer']) ? null : json_decode($_POST['ai_disclaimer_answer']);
-        $form_data->previousRejectedaiDisclaimer = empty($_POST['previous_rejected_ai_disclaimer']) ? null : json_decode($_POST['previous_rejected_ai_disclaimer']);
+		if ( ! $this->post_id || ! current_user_can( 'edit_post', $this->post_id ) ) {
+			wp_redirect( admin_url( 'admin.php?page=metis-message&post_id=' . $this->post_id . '&notice=wp_metis_save_message_nonce_error' ) );
+			exit;
+		}
+
+		$private_identification_id        = isset( $post_data['private_identification_id'] ) && is_scalar( $post_data['private_identification_id'] ) ? (string) $post_data['private_identification_id'] : '';
+		$text_type                        = isset( $post_data['text_type'] ) && is_scalar( $post_data['text_type'] ) ? (string) $post_data['text_type'] : '';
+		$text_length                      = isset( $post_data['text_length'] ) && is_scalar( $post_data['text_length'] ) ? (string) $post_data['text_length'] : '';
+		$permalink                        = isset( $post_data['permalink'] ) && is_scalar( $post_data['permalink'] ) ? (string) $post_data['permalink'] : '';
+		$ai_disclaimer_answer             = isset( $post_data['ai_disclaimer_answer'] ) && is_scalar( $post_data['ai_disclaimer_answer'] ) ? (string) $post_data['ai_disclaimer_answer'] : '';
+		$previous_rejected_ai_disclaimer  = isset( $post_data['previous_rejected_ai_disclaimer'] ) && is_scalar( $post_data['previous_rejected_ai_disclaimer'] ) ? (string) $post_data['previous_rejected_ai_disclaimer'] : '';
+		$text                             = isset( $post_data['text'] ) && is_scalar( $post_data['text'] ) ? (string) $post_data['text'] : '';
+		$title                            = isset( $post_data['title'] ) && is_scalar( $post_data['title'] ) ? (string) $post_data['title'] : '';
+
+		// sanitize form post data
+		$form_data                                 = new \stdClass();
+		$form_data->private_identification_id      = empty( $private_identification_id ) ? null : sanitize_key( $private_identification_id );
+		$form_data->text_type                      = empty( $text_type ) ? null : sanitize_key( $text_type );
+		$form_data->text_length                    = empty( $text_length ) ? null : (int) $text_length;
+		$form_data->permalink                      = empty( $permalink ) ? null : esc_url_raw( $permalink );
+		$form_data->aiDisclaimerAnswer             = empty( $ai_disclaimer_answer ) ? null : json_decode( $ai_disclaimer_answer );
+		$form_data->previousRejectedaiDisclaimer   = empty( $previous_rejected_ai_disclaimer ) ? null : json_decode( $previous_rejected_ai_disclaimer );
 
         // if aiDisclaimer is true & previousRejectedaiDisclaimer is null we have to set previousRejectedaiDisclaimer to false for logging in backend
         if($form_data->aiDisclaimerAnswer &&  ($form_data->previousRejectedaiDisclaimer === null)) {
@@ -273,34 +290,46 @@ class Page_Message extends Page {
         }
 
         // for dev environment: localhost wont be accepted as permalink domain ...
-        if (defined('PRIORIT_DEBUG')) {
-            if (PRIORIT_DEBUG === true) {
-                $form_data->permalink = empty($_POST['permalink']) ? null : 'https://www.debug.vgwort/post-1';
-            }
-        }
-        $form_data->text = empty($_POST['text']) ? null : base64_encode(sanitize_text_field($_POST['text']));
-        $form_data->title = empty($_POST['title']) ? null : sanitize_text_field($_POST['title']);
+		if ( defined( 'PRIORIT_DEBUG' ) ) {
+			if ( PRIORIT_DEBUG === true ) {
+				$form_data->permalink = empty( $permalink ) ? null : 'https://www.debug.vgwort/post-1';
+			}
+		}
+		$form_data->text  = empty( $text ) ? null : base64_encode( sanitize_text_field( $text ) );
+		$form_data->title = empty( $title ) ? null : sanitize_text_field( $title );
 
 		$form_data->urls = [ $form_data->permalink ];
-		if ( ! empty( $_POST['urls'] ) && is_array( $_POST['urls'] ) && count( $_POST['urls'] ) ) {
-			foreach ( $_POST['urls'] as $url ) {
-				$form_data->urls[] = sanitize_url( $url );
+		if ( ! empty( $post_data['urls'] ) && is_array( $post_data['urls'] ) && count( $post_data['urls'] ) ) {
+			foreach ( $post_data['urls'] as $url ) {
+				if ( ! is_scalar( $url ) ) {
+					continue;
+				}
+
+				$form_data->urls[] = esc_url_raw( (string) $url );
 			}
 		}
 
-		if ( empty( $_POST['participants'] ) || ! is_array( $_POST['participants'] ) || ! count( $_POST['participants'] ) ) {
+		if ( empty( $post_data['participants'] ) || ! is_array( $post_data['participants'] ) || ! count( $post_data['participants'] ) ) {
 			$form_data->participants = [];
 		} else {
 			$form_data->participants = [];
-			foreach ( $_POST['participants'] as $participant ) {
-				$participant = json_decode( stripcslashes( $participant ) );
+			foreach ( $post_data['participants'] as $participant ) {
+				if ( ! is_scalar( $participant ) ) {
+					continue;
+				}
+
+				$participant = json_decode( (string) $participant );
+
+				if ( ! is_object( $participant ) ) {
+					continue;
+				}
 
 				$sanitized_participant              = new \stdClass();
-				$sanitized_participant->id          = (int) $participant->id;
-				$sanitized_participant->first_name  = sanitize_text_field( $participant->first_name );
-				$sanitized_participant->last_name   = sanitize_text_field( $participant->last_name );
-				$sanitized_participant->file_number = (int) $participant->file_number;
-				$sanitized_participant->involvement = sanitize_key( $participant->involvement );
+				$sanitized_participant->id          = empty( $participant->id ) ? 0 : (int) $participant->id;
+				$sanitized_participant->first_name  = empty( $participant->first_name ) ? '' : sanitize_text_field( $participant->first_name );
+				$sanitized_participant->last_name   = empty( $participant->last_name ) ? '' : sanitize_text_field( $participant->last_name );
+				$sanitized_participant->file_number = empty( $participant->file_number ) ? 0 : (int) $participant->file_number;
+				$sanitized_participant->involvement = empty( $participant->involvement ) ? '' : sanitize_key( $participant->involvement );
 
 				$form_data->participants[] = $sanitized_participant;
 			}
@@ -398,7 +427,7 @@ class Page_Message extends Page {
 		}
 
 		// add text length limit changes
-		$text_lenght_limits = Db_Text_Limit_Changes::get_text_limit_changes_with_lastest_pid_by_post_id( (int) $_REQUEST['post_id'] );
+		$text_lenght_limits = Db_Text_Limit_Changes::get_text_limit_changes_with_lastest_pid_by_post_id( $this->post_id );
 
 		$text_length_limits_api_format = [];
 

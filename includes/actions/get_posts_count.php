@@ -1,18 +1,14 @@
 <?php
 use WP_VGWORT\Db_Pixels;
 function get_posts_count() {
-    if ( ! current_user_can( 'edit_posts' ) ) {
-        wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
-    }
-
     // Check for nonce security
-    if (!check_ajax_referer('wp_metis_metabox_nonce', 'security', false)) {
-        wp_send_json_error(array('message' => 'Nonce-Überprüfung fehlgeschlagen.'));
-        wp_die();  // Terminate execution if nonce fails
-    }
+    vgw_metis_verify_metabox_nonce( 'security' );
+    vgw_metis_get_authorized_post_id( 'post' );
 
-    if (isset($_POST['public_identification_id'])) {
-        $publicIdentificationId = sanitize_text_field($_POST['public_identification_id']);
+    $post_data = wp_unslash( $_POST );
+
+    if (isset($post_data['public_identification_id']) && is_scalar( $post_data['public_identification_id'] )) {
+        $publicIdentificationId = sanitize_text_field( (string) $post_data['public_identification_id'] );
         if ($publicIdentificationId!=null) {
             wp_send_json_success(array(
                 'posts_count' => Db_Pixels::get_assigned_posts_count($publicIdentificationId)

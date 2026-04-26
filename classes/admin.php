@@ -169,6 +169,7 @@ class Admin {
 				'wp_metis_gutenberg_obj',
 				[
 					'gutenberg_not_loaded' => esc_html__( 'Der Gutenberg Editor ist nicht aktiviert / geladen.', 'vgw-metis' ),
+					'nonce'                => wp_create_nonce( 'wp_metis_gutenberg_save_post' ),
 				]
 			);
 
@@ -394,7 +395,20 @@ class Admin {
 	 *
 	 * @return void
 	 */
-	public function save_post( int $post_id ): void {
+	public function save_post( int $post_id, \WP_Post|null $post = null, bool $update = false ): void {
+		if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) ) {
+			return;
+		}
+
+		$post = $post ?? get_post( $post_id );
+
+		if ( ! $post || ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
+			return;
+		}
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return;
+		}
 
 		// set text type accordingly
 		Services::set_text_type( $post_id );
@@ -420,16 +434,29 @@ class Admin {
 	 * @return void
 	 */
 	public function gutenberg_save_post(): void {
-		// Capability check: Only allow users who can edit the post
-		if ( empty( $_POST['post_id'] ) ) {
-			wp_send_json_error( [ 'message' => 'Missing post_id.' ], 400 );
-			wp_die();
+		if ( ! check_ajax_referer( 'wp_metis_gutenberg_save_post', 'security', false ) ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Invalid request.', 'vgw-metis' ) ], 400 );
 		}
-		$post_id = (int) $_POST['post_id'];
+
+		$post_data = wp_unslash( $_POST );
+		$post_id   = isset( $post_data['post_id'] ) && is_scalar( $post_data['post_id'] ) ? absint( $post_data['post_id'] ) : 0;
+
+		if ( ! $post_id ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Invalid request.', 'vgw-metis' ) ], 400 );
+		}
+
+		if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Invalid request.', 'vgw-metis' ) ], 400 );
+		}
+
+		$post = get_post( $post_id );
+
+		if ( ! $post || ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Invalid request.', 'vgw-metis' ) ], 400 );
+		}
 
 		if ( ! current_user_can( 'edit_post', $post_id ) ) {
-			wp_send_json_error( [ 'message' => 'Insufficient permissions.' ], 403 );
-			wp_die();
+			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied.', 'vgw-metis' ) ], 403 );
 		}
 
 		// set text type accordingly
@@ -457,8 +484,6 @@ class Admin {
 			'public_identification_id' => $public_identification_id,
 			'private_identification_id' => $private_identification_id
 		]);
-
-		wp_die();
 	}
 
 

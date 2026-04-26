@@ -190,20 +190,18 @@ class Assignment_Services extends Services {
 					Db_Pixels::set_pixel_activation_status( $pixel->get_public_identification_id(), true, $post->ID );
 					return Assignment::REACTIVATED;
 				}
+
 				$this->_log .= "Pixel[" . $pixel->get_public_identification_id() . "] on post '" . $post->post_title . "' already active.\n";
 				return Assignment::NONE;
-			// If the already associated pixel is not the same sa the one in HTML, delete existing pixel connection and add associate new pixel
-			} else {
-				if(Db_Pixels::remove_pixel_from_post($existingAssociatedPixel->public_identification_id,  $post->ID)) {
-					// Now that the existing pixel was successfuly removed, assign new pixel
-					if (Db_Pixels::assign_pixel_to_post($pixel->get_public_identification_id(), $post->ID)) {
-						// Successfully assigned the first available pixel
-						$this->_log .= "New pixel[" . $pixel->get_public_identification_id() . "] assigned to post '" . $post->post_title . "'.\n";
-						return Assignment::REASSIGNED; 
-					}
-					$this->_log .= "Pixel[" . $pixel->get_public_identification_id() . "] could not be reasigned to post '" . $post->post_title . "'.\n";
-				}
 			}
+
+			// If the already associated pixel is not the same as the one in HTML, replace the relation in place.
+			if ( Db_Pixels::replace_pixel_for_post( $pixel->get_public_identification_id(), $post->ID ) ) {
+				$this->_log .= "New pixel[" . $pixel->get_public_identification_id() . "] reassigned to post '" . $post->post_title . "'.\n";
+				return Assignment::REASSIGNED;
+			}
+
+			$this->_log .= "Pixel[" . $pixel->get_public_identification_id() . "] could not be reassigned to post '" . $post->post_title . "'.\n";
 			$this->_log .= "Failure by assigning pixel[" . $pixel->get_public_identification_id() . "] to post '" . $post->post_title . "'.\n";
 			$this->_failure++;
 			return false;

@@ -272,8 +272,18 @@
                     _wpnonce: wp_metis_list_table_obj.save_nonce
                 },
                 success: function (response) {
-                    location.reload();
-                    return true;
+                    if (response && response.success) {
+                        location.reload();
+                        return true;
+                    }
+
+                    const message = response && response.data && response.data.message
+                        ? response.data.message
+                        : 'Error while saving.';
+
+                    console.error('Save failed:', response);
+                    alert(message);
+                    return false;
                 },
                 error: function(xhr, status, error) {
                     console.error('Save failed:', status, error);
@@ -296,17 +306,25 @@
                     _wpnonce: wp_metis_list_table_obj.delete_nonce
                 },
                 success: function (response) {
-                    if (response == 0)
+                    if (response && response.success) {
                         location.reload();
-                    else {
-                        if (response.success == false)
-                            alert(response.data.message);
+                        return;
                     }
+
+                    const message = response && response.data && response.data.message
+                        ? response.data.message
+                        : 'Error while deleting.';
+
+                    alert(message);
                 },
                 error: function(xhr, status, error) {
+                    const message = xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
+                        ? xhr.responseJSON.data.message
+                        : 'Fehler beim Löschen: ' + error;
+
                     console.error('Delete failed:', status, error);
                     console.error('Response:', xhr.responseText);
-                    alert('Fehler beim Löschen: ' + error);
+                    alert(message);
                 }
             });
         }

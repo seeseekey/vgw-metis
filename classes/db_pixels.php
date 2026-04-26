@@ -476,9 +476,67 @@ class Db_Pixels {
 			error_log( $wpdb->last_error ); // Log the last error to debug any issues
 			return false;
 		}
-		  
+
 		return $result;
-		
+
+	}
+
+	/**
+	 * Assign a pixel to a post or replace the existing post relation in place.
+	 *
+	 * @param string $public_identification_id the new public identification id
+	 * @param int    $post_id                  the post id to connect to
+	 *
+	 * @return bool true on success, false on database error
+	 */
+	public static function replace_pixel_for_post( string $public_identification_id, int $post_id ): bool {
+		global $wpdb;
+
+		if ( ! $public_identification_id || ! $post_id ) {
+			return false;
+		}
+
+		$table_pixels      = $wpdb->prefix . self::TABLE_PIXELS;
+		$table_pixel_posts = $wpdb->prefix . self::TABLE_PIXEL_POSTS;
+		$pixel_exists      = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT public_identification_id FROM $table_pixels WHERE public_identification_id = %s LIMIT 1",
+				$public_identification_id
+			)
+		);
+
+		if ( ! $pixel_exists ) {
+			return false;
+		}
+
+		$current_public_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT public_identification_id FROM $table_pixel_posts WHERE post_id = %d LIMIT 1",
+				$post_id
+			)
+		);
+
+		if ( $current_public_id ) {
+			$result = $wpdb->update(
+				$table_pixel_posts,
+				array(
+					'public_identification_id' => $public_identification_id,
+					'active'                   => true,
+				),
+				array( 'post_id' => $post_id ),
+				array( '%s', '%d' ),
+				array( '%d' )
+			);
+
+			if ( $result === false ) {
+				error_log( $wpdb->last_error );
+				return false;
+			}
+
+			return true;
+		}
+
+		return self::assign_pixel_to_post( $public_identification_id, $post_id ) !== false;
 	}
 
 	/**

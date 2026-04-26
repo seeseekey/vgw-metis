@@ -199,11 +199,28 @@ class Page_Settings extends Page {
 	}
 
 	/**
+	 * Verify permission and nonce for privileged settings actions.
+	 *
+	 * @param string $action The admin-post action name.
+	 *
+	 * @return void
+	 */
+	private function verify_settings_action( string $action ): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Permission denied.', 'vgw-metis' ), '', [ 'response' => 403 ] );
+		}
+
+		check_admin_referer( $action );
+	}
+
+	/**
 	 * Calls API to validate the key and redirect with success / error message
 	 *
 	 * @return void
 	 */
 	public function check_api_key(): void {
+		$this->verify_settings_action( 'wp_metis_check_api_key' );
+
 		if ( Tom_Pixels::health_check() ) {
 			wp_redirect( admin_url( 'admin.php?page=metis-settings&notice=validate_api_key_success' ) );
 		} else {
@@ -218,6 +235,8 @@ class Page_Settings extends Page {
 	 * @return void
 	 */
 	public function order_pixels(): void {
+		$this->verify_settings_action( 'wp_metis_order_pixels' );
+
 		$api_pixels = Tom_Pixels::order_pixels();
 
 		$insert_pixels = Pixel::batch_transform_api_to_db_pixel( $api_pixels, Common::SOURCE_RESTAPI );
@@ -236,6 +255,8 @@ class Page_Settings extends Page {
 	 * @return void
 	 */
 	public function check_pixels(): void {
+		$this->verify_settings_action( 'wp_metis_check_pixels' );
+
 		if ( Services::check_all_pixels() ) {
 			wp_redirect( admin_url( 'admin.php?page=metis-settings&notice=check_pixels_success' ) );
 		} else {
@@ -250,6 +271,8 @@ class Page_Settings extends Page {
 	 * @return void
 	 */
 	public function scan_pixels(): void {
+		$this->verify_settings_action( 'wp_metis_scan_pixels' );
+
 		$response = Scan_Services::scan_posts_for_pixels();
 		if ( $response ) {
 			wp_redirect( admin_url( 'admin.php?page=metis-settings&notice=scan_pixels_success&&custom_text=' . $response ) );

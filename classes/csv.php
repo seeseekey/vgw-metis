@@ -66,28 +66,36 @@ class Csv {
 		// check if we have an API key, if not, redirect and show warning
 		//Services::has_api_key_or_redirect();
 
-		if ( empty( $_REQUEST['action'] ) || sanitize_key( $_REQUEST['action'] ) != 'wp_metis_import_csv' ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Permission denied.', 'vgw-metis' ), '', [ 'response' => 403 ] );
+		}
+
+		check_admin_referer( 'wp_metis_import_csv' );
+
+		$request_data = wp_unslash( $_REQUEST );
+		$action       = isset( $request_data['action'] ) && is_scalar( $request_data['action'] ) ? sanitize_key( (string) $request_data['action'] ) : '';
+		$import_type  = isset( $request_data['import_type'] ) && is_scalar( $request_data['import_type'] ) ? sanitize_key( (string) $request_data['import_type'] ) : '';
+
+		if ( $action !== 'wp_metis_import_csv' ) {
 			// no action given. call not allowed. go to dashboard and show error.
 			Services::redirect_to_vgw_metis_page( 'metis-settings', 'wp_metis_import_csv_tom_error_call_not_allowed' );
 		}
 
-		if ( empty( $_REQUEST['import_type'] ) || ! in_array( sanitize_key( $_REQUEST['import_type'] ), $this->allowed_import_types ) ) {
+		if ( ! in_array( $import_type, $this->allowed_import_types, true ) ) {
 			// no import type given. go to dashboard and show error.
 			Services::redirect_to_vgw_metis_page( 'metis-settings', 'wp_metis_import_csv_tom_error_no_import_type' );
 		}
 
-		$import_type = sanitize_key( $_REQUEST['import_type'] );
-
-		if ( $this->is_uploaded_file_check( $_FILES['wp_metis_csv_upload']['tmp_name'] ) ) {
+		if ( isset( $_FILES['wp_metis_csv_upload']['tmp_name'] ) && $this->is_uploaded_file_check( $_FILES['wp_metis_csv_upload']['tmp_name'] ) ) {
 			$mime_type = sanitize_mime_type( mime_content_type( $_FILES['wp_metis_csv_upload']['tmp_name'] ) );
 
-			if ( ! in_array( $mime_type, $this->allowed_mime_types ) ) {
+			if ( ! in_array( $mime_type, $this->allowed_mime_types, true ) ) {
 				// File type / MIME type is NOT allowed. Redirect.
 				Services::redirect_to_vgw_metis_page( 'metis-settings', 'wp_metis_import_csv_tom_error_file_mime_type' );
 			}
 
 			$path_parts = pathinfo( sanitize_file_name( $_FILES['wp_metis_csv_upload']['name'] ) );
-			if ( ! in_array( strtolower( $path_parts['extension'] ), $this->allowed_file_extensions ) ) {
+			if ( empty( $path_parts['extension'] ) || ! in_array( strtolower( $path_parts['extension'] ), $this->allowed_file_extensions, true ) ) {
 				// File extension is NOT allowed. Redirect.
 				Services::redirect_to_vgw_metis_page( 'metis-settings', 'wp_metis_import_csv_tom_error_file_extension' );
 			}
@@ -203,7 +211,6 @@ class Csv {
 	 *
 	 * @return void
 	 */
-	// ToDo Check if CSV Upload uses WP Nonce
 	public function render_tom_csv_import_file_input(): void {
 		?>
         <input type='file' id='wp-metis-field-csv-upload' name='wp_metis_csv_upload' accept=".csv"/>
