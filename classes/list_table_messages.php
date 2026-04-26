@@ -361,9 +361,9 @@ class List_Table_Messages extends \WP_List_Table {
 		if ( $which === 'top' ) {
 			$state    = ! empty( $_GET['state'] ) ? sanitize_key( $_GET["state"] ) : '';
 			?>
-            <label for="state"><?php _e( 'Status', 'vgw-metis' ); ?></label>
+            <label for="state"><?php esc_html_e( 'Status', 'vgw-metis' ); ?></label>
             <select name="state" id="state">
-                <option value="" <?php selected( $state, '' ); ?>><?php _e( 'Alle', 'vgw-metis' ); ?></option>
+                <option value="" <?php selected( $state, '' ); ?>><?php esc_html_e( 'Alle', 'vgw-metis' ); ?></option>
                 <option value="<?php esc_attr_e( Common::STATE_MESSAGE_REPORTED ); ?>" <?php selected( $state, Common::STATE_MESSAGE_REPORTED ); ?>>
 					<?php esc_html_e( 'Gemeldet' ) ?>
                 </option>

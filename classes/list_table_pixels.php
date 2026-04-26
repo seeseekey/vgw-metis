@@ -201,7 +201,7 @@ class List_Table_Pixels extends \WP_List_Table {
 	 * @return string
 	 */
 	public function column_state( $item ): string {
-		if (isset($item['multiple']) && $item['multiple']) 
+		if (isset($item['multiple']) && $item['multiple'])
 			return "<p style=\"color: #b32d2e\">" . self::get_state_label( $item['assigned'], $item['active'], $item['disabled'], $item['multiple'] ) . "</p>";
 		return self::get_state_label( $item['assigned'], $item['active'], $item['disabled'], $item['multiple'] );
 	}
@@ -348,23 +348,23 @@ class List_Table_Pixels extends \WP_List_Table {
 		if ( $which === 'top' ) {
 			$state = ! empty( $_GET['state'] ) ? sanitize_key( $_GET["state"] ) : '';
 			?>
-            <label for="state"><?php _e( 'Status', 'vgw-metis' ); ?></label>
+            <label for="state"><?php esc_html_e( 'Status', 'vgw-metis' ); ?></label>
             <select name="state" id="state">
-                <option value="" <?php selected( $state, '' ); ?>><?php _e( 'Alle', 'vgw-metis' ); ?></option>
+                <option value="" <?php selected( $state, '' ); ?>><?php esc_html_e( 'Alle', 'vgw-metis' ); ?></option>
                 <option value="<?php esc_attr_e( Common::STATE_PIXEL_ASSIGNED ); ?>" <?php selected( $state, Common::STATE_PIXEL_ASSIGNED ); ?>>
-					<?php esc_html_e( List_Table_Pixels::get_state_label( true, true, false ) ) ?>
+					<?php esc_html( List_Table_Pixels::get_state_label( true, true, false ) ) ?>
                 </option>
-				<option value="<?php esc_attr_e( Common::STATE_PIXEL_ASSIGNED_MULTIPLE ); ?>" <?php selected( $state, Common::STATE_PIXEL_ASSIGNED_MULTIPLE ); ?>>
+				<option value="<?php esc_attr( Common::STATE_PIXEL_ASSIGNED_MULTIPLE ); ?>" <?php selected( $state, Common::STATE_PIXEL_ASSIGNED_MULTIPLE ); ?>>
 					<?php echo esc_html( List_Table_Pixels::get_state_label( true, true, false, true ) ) ?>
                 </option>
-                <option value="<?php esc_attr_e( Common::STATE_PIXEL_AVAILABLE ); ?>" <?php selected( $state, Common::STATE_PIXEL_AVAILABLE ); ?>>
-					<?php esc_html_e( List_Table_Pixels::get_state_label( false, false, false ) ) ?>
+                <option value="<?php esc_attr( Common::STATE_PIXEL_AVAILABLE ); ?>" <?php selected( $state, Common::STATE_PIXEL_AVAILABLE ); ?>>
+					<?php esc_html( List_Table_Pixels::get_state_label( false, false, false ) ) ?>
                 </option>
-                <option value="<?php esc_attr_e( Common::STATE_PIXEL_RESERVED ); ?>" <?php selected( $state, Common::STATE_PIXEL_RESERVED ); ?>>
-					<?php esc_html_e( List_Table_Pixels::get_state_label( true, false, false ) ) ?>
+                <option value="<?php esc_attr( Common::STATE_PIXEL_RESERVED ); ?>" <?php selected( $state, Common::STATE_PIXEL_RESERVED ); ?>>
+					<?php esc_html( List_Table_Pixels::get_state_label( true, false, false ) ) ?>
                 </option>
-                <option value="<?php esc_attr_e( Common::STATE_PIXEL_DISABLED ); ?>" <?php selected( $state, Common::STATE_PIXEL_DISABLED ); ?>>
-					<?php esc_html_e( List_Table_Pixels::get_state_label( null, null, true ) ) ?>
+                <option value="<?php esc_attr( Common::STATE_PIXEL_DISABLED ); ?>" <?php selected( $state, Common::STATE_PIXEL_DISABLED ); ?>>
+					<?php esc_html( List_Table_Pixels::get_state_label( null, null, true ) ) ?>
                 </option>
             </select>
             <script>

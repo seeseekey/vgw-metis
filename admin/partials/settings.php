@@ -48,7 +48,7 @@ namespace WP_VGWORT;
                     class="button button-secondary"
                     href="<?php echo esc_url(admin_url('admin-post.php?action=wp_metis_order_pixels&page=metis-settings')); ?>"><?php esc_html_e( "Zählmarken bestellen", 'vgw-metis' ) ?>
                 </a>
-                <p class="description"><?php echo sprintf( esc_html__( 'Manuell %s neue Zählmarken bestellen', 'vgw-metis' ), Common::NUMBER_ORDER_PIXEL ) ?></p>
+                <p class="description"><?php echo sprintf( esc_html__( 'Manuell %s neue Zählmarken bestellen', 'vgw-metis' ), esc_attr( Common::NUMBER_ORDER_PIXEL ) ) ?></p>
             </td>
         </tr>
         <tr>
