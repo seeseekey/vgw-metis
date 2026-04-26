@@ -319,6 +319,9 @@ class Metabox {
 	 * @return void
 	 */
 	public function automatic_assign_pixel_action(): void {
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
+		}
 
 		// Check for nonce security
 	    if (!check_ajax_referer('wp_metis_metabox_nonce', 'security', false)) {
@@ -410,6 +413,9 @@ class Metabox {
 	 * @return void
 	 */
 	public function manual_assign_pixel_action(): void {
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
+		}
 
 		// wp nonce check
 		if (! wp_verify_nonce($_REQUEST['nonce'], 'wp_metis_metabox_nonce')) {
@@ -533,6 +539,10 @@ class Metabox {
 	 * @return void
 	 */
 	public static function is_valid_and_ownership_check(): void {
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
+		}
+
 		// wp nonce check
 		if (! wp_verify_nonce($_REQUEST['nonce'], "wp_metis_metabox_nonce")) {
 			exit("WP Nonce incorrect");

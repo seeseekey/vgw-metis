@@ -90,6 +90,10 @@ class Page_Participants extends Page {
 	 * @return void
 	 */
 	public function participant_save(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
+		}
+
 		// Security: Verify nonce
 		if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'] ?? '', 'participant_save_nonce' ) ) {
 			wp_die( 'Security check failed' );
@@ -134,6 +138,10 @@ class Page_Participants extends Page {
 	 * @return int|null
 	 */
 	public function participant_delete( bool $force_delete = false ): int|null {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied', 'vgw-metis' ) ], 403 );
+		}
+
 		// Security: Verify nonce
 		if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'] ?? '', 'participant_delete_nonce' ) ) {
 			wp_die( 'Security check failed' );
