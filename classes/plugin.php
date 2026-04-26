@@ -15,7 +15,7 @@ namespace WP_VGWORT;
 class Plugin {
 
 	// Plugin version number
-	const VERSION = '2.0.1';
+	const VERSION = '2.1.0';
 
 	// paths for spl to look for to autoload classes
 	const AUTOLOAD_PATHS = array( 'classes', 'admin', 'public' );
@@ -48,6 +48,9 @@ class Plugin {
 
 		// load setup
 		$this->setup = new Setup( $this );
+
+		// register cron handling outside of the admin context
+		Cron::register();
 
 		// load admin
 		if ( is_admin() ) {

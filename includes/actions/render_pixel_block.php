@@ -16,7 +16,7 @@ function render_pixel_block_for_post( $content ) {
 
         if ( $pixelData && $pixelData->public_identification_id ) {
             $pixel_block  = '<!-- VG WORT Tracking code START -->';
-            $pixel_block .= '<img id="metis-img-pixel" src="https://vg08.met.vgwort.de/na/' . esc_attr( $pixelData->public_identification_id ) . '" width="1" height="1" alt="" />';
+            $pixel_block .= '<img id="metis-img-pixel" class="skip-lazy" loading="eager" src="https://vg08.met.vgwort.de/na/' . esc_attr( $pixelData->public_identification_id ) . '" width="1" height="1" alt="" />';
             $pixel_block .= '<!-- VG WORT Tracking code END -->';
         }
 
