@@ -21,7 +21,15 @@ class Csv {
 	/**
 	 * @var array allowed mimetypes
 	 */
-	private array $allowed_mime_types = [ 'text/csv', 'text/plain' ];
+	private array $allowed_mime_types = [
+		'text/csv',
+		'text/plain',
+		'text/x-csv',
+		'application/csv',
+		'application/x-csv',
+		'application/vnd.ms-excel',
+		'application/octet-stream',
+	];
 
 	/**
 	 * @var array allowed file extensions
