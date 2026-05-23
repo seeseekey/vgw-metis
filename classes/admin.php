@@ -126,6 +126,11 @@ class Admin {
 		add_action( 'manage_post_posts_custom_column', [ $this, 'manage_post_content' ], 10, 2 );
 		// add content to the custom plugin columns in pages overview
 		add_action( 'manage_page_posts_custom_column', [ $this, 'manage_page_content' ], 10, 2 );
+		// add pixel assignment filter to posts and pages overview
+		add_action( 'restrict_manage_posts', [ $this, 'render_pixel_assignment_filter' ] );
+		add_action( 'pre_get_posts', [ $this, 'apply_pixel_assignment_filter' ] );
+		add_filter( 'posts_join', [ $this, 'filter_posts_by_pixel_assignment_join' ], 10, 2 );
+		add_filter( 'posts_where', [ $this, 'filter_posts_by_pixel_assignment_where' ], 10, 2 );
 		// intercept save post and add plugin related save
 		add_action( 'save_post', [ $this, 'save_post' ], 10, 3 );
 		// adsd save post for gutenberg editor
@@ -178,6 +183,133 @@ class Admin {
 	 */
 	public function manage_post( $columns ): array {
 		return array_merge( $columns, $this->create_custom_columns() );
+	}
+
+	/**
+	 * Render the pixel assignment filter dropdown in post and page overview tables.
+	 *
+	 * @param string $post_type Current post type.
+	 *
+	 * @return void
+	 */
+	public function render_pixel_assignment_filter( string $post_type ): void {
+		if ( ! in_array( $post_type, [ 'post', 'page' ], true ) ) {
+			return;
+		}
+
+		$request_data = wp_unslash( $_GET );
+		$filter       = isset( $request_data['vgw_metis_pixel_assignment'] ) && is_scalar( $request_data['vgw_metis_pixel_assignment'] )
+			? sanitize_key( (string) $request_data['vgw_metis_pixel_assignment'] )
+			: '';
+
+		?>
+		<label for="vgw-metis-pixel-assignment-filter" class="screen-reader-text">
+			<?php esc_html_e( 'Nach Zählmarken-Zuordnung filtern', 'vgw-metis' ); ?>
+		</label>
+		<select name="vgw_metis_pixel_assignment" id="vgw-metis-pixel-assignment-filter" style="min-width: 220px;">
+			<option value="" <?php selected( $filter, '' ); ?>>
+				<?php esc_html_e( 'Alle Zählmarken', 'vgw-metis' ); ?>
+			</option>
+			<option value="assigned" <?php selected( $filter, 'assigned' ); ?>>
+				<?php esc_html_e( 'Zählmarke zugewiesen', 'vgw-metis' ); ?>
+			</option>
+			<option value="unassigned" <?php selected( $filter, 'unassigned' ); ?>>
+				<?php esc_html_e( 'Zählmarke nicht zugewiesen', 'vgw-metis' ); ?>
+			</option>
+		</select>
+		<?php
+	}
+
+	/**
+	 * Mark post and page overview queries for pixel assignment filtering.
+	 *
+	 * @param \WP_Query $query Current query.
+	 *
+	 * @return void
+	 */
+	public function apply_pixel_assignment_filter( \WP_Query $query ): void {
+		if ( ! is_admin() || ! $query->is_main_query() ) {
+			return;
+		}
+
+		$post_type = $query->get( 'post_type' );
+		if ( empty( $post_type ) ) {
+			$post_type = 'post';
+		}
+
+		if ( is_array( $post_type ) || ! in_array( $post_type, [ 'post', 'page' ], true ) ) {
+			return;
+		}
+
+		$request_data = wp_unslash( $_GET );
+		$filter       = isset( $request_data['vgw_metis_pixel_assignment'] ) && is_scalar( $request_data['vgw_metis_pixel_assignment'] )
+			? sanitize_key( (string) $request_data['vgw_metis_pixel_assignment'] )
+			: '';
+
+		if ( ! in_array( $filter, [ 'assigned', 'unassigned' ], true ) ) {
+			return;
+		}
+
+		$query->set( 'vgw_metis_pixel_assignment', $filter );
+	}
+
+	/**
+	 * Join active pixel assignments for filtered post and page overview queries.
+	 *
+	 * @param string    $join  SQL join clause.
+	 * @param \WP_Query $query Current query.
+	 *
+	 * @return string
+	 */
+	public function filter_posts_by_pixel_assignment_join( string $join, \WP_Query $query ): string {
+		if ( ! $this->should_filter_by_pixel_assignment( $query ) ) {
+			return $join;
+		}
+
+		global $wpdb;
+
+		$table_pixel_posts = $wpdb->prefix . DB_Pixels::TABLE_PIXEL_POSTS;
+
+		if ( str_contains( $join, 'vgw_metis_pixelposts' ) ) {
+			return $join;
+		}
+
+		return $join . " LEFT JOIN $table_pixel_posts AS vgw_metis_pixelposts ON vgw_metis_pixelposts.post_id = $wpdb->posts.ID AND vgw_metis_pixelposts.active = 1 ";
+	}
+
+	/**
+	 * Restrict filtered post and page overview queries by active pixel assignment.
+	 *
+	 * @param string    $where SQL where clause.
+	 * @param \WP_Query $query Current query.
+	 *
+	 * @return string
+	 */
+	public function filter_posts_by_pixel_assignment_where( string $where, \WP_Query $query ): string {
+		if ( ! $this->should_filter_by_pixel_assignment( $query ) ) {
+			return $where;
+		}
+
+		if ( $query->get( 'vgw_metis_pixel_assignment' ) === 'assigned' ) {
+			return $where . ' AND vgw_metis_pixelposts.post_id IS NOT NULL ';
+		}
+
+		return $where . ' AND vgw_metis_pixelposts.post_id IS NULL ';
+	}
+
+	/**
+	 * Check whether a query should be filtered by active pixel assignment.
+	 *
+	 * @param \WP_Query $query Current query.
+	 *
+	 * @return bool
+	 */
+	private function should_filter_by_pixel_assignment( \WP_Query $query ): bool {
+		if ( ! is_admin() || ! $query->is_main_query() ) {
+			return false;
+		}
+
+		return in_array( $query->get( 'vgw_metis_pixel_assignment' ), [ 'assigned', 'unassigned' ], true );
 	}
 
 	/**
