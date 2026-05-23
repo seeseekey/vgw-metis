@@ -90,5 +90,17 @@ namespace WP_VGWORT;
                 <p class="description"><?php esc_html_e( 'Zählmarken über die aus T.O.M. exportierte CSV-Datei importieren.', 'vgw-metis' ); ?></p>
             </td>
         </tr>
+        <tr>
+            <th scope="row"><?php esc_html_e( 'CSV-Import aus Prosodia VGW OS', 'vgw-metis' ) ?></th>
+            <td>
+                <form method="post" action="admin-post.php" enctype="multipart/form-data">
+                    <?php wp_nonce_field( 'wp_metis_import_csv' ); ?>
+                    <input id="btn-prosodia-csv-import" type="submit" class="button button-secondary" value="<?php esc_html_e( "Zählmarken importieren", 'vgw-metis' ) ?>" />
+                    <?php $this->csv->render_prosodia_csv_import_file_input(); ?>
+                    <input type="hidden" name="page" value="metis-settings" />
+                </form>
+                <p class="description"><?php esc_html_e( 'Zählmarken über eine aus Prosodia VGW OS exportierte CSV-Datei importieren.', 'vgw-metis' ); ?></p>
+            </td>
+        </tr>
     </table>
 </div>
