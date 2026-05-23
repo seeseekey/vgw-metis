@@ -19,19 +19,6 @@ class Csv {
 	public bool $activated = false;
 
 	/**
-	 * @var array allowed mimetypes
-	 */
-	private array $allowed_mime_types = [
-		'text/csv',
-		'text/plain',
-		'text/x-csv',
-		'application/csv',
-		'application/x-csv',
-		'application/vnd.ms-excel',
-		'application/octet-stream',
-	];
-
-	/**
 	 * @var array allowed file extensions
 	 */
 	private array $allowed_file_extensions = [ 'csv' ];
@@ -121,21 +108,6 @@ class Csv {
 		}
 
 		if ( isset( $_FILES['wp_metis_csv_upload']['tmp_name'] ) && $this->is_uploaded_file_check( $_FILES['wp_metis_csv_upload']['tmp_name'] ) ) {
-			$detected_mime_type = mime_content_type( $_FILES['wp_metis_csv_upload']['tmp_name'] );
-			$mime_type          = is_string( $detected_mime_type ) ? sanitize_mime_type( $detected_mime_type ) : '';
-
-			if ( ! in_array( $mime_type, $this->allowed_mime_types, true ) ) {
-				// File type / MIME type is NOT allowed. Redirect.
-				Services::redirect_to_vgw_metis_page(
-					'metis-settings',
-					$this->get_import_notice_key( $import_type, 'file_mime_type' ),
-					sprintf(
-						esc_html__( 'Erkannter MIME-Type: %s', 'vgw-metis' ),
-						$mime_type ?: esc_html__( 'unbekannt', 'vgw-metis' )
-					)
-				);
-			}
-
 			$path_parts = pathinfo( sanitize_file_name( $_FILES['wp_metis_csv_upload']['name'] ) );
 			if ( empty( $path_parts['extension'] ) || ! in_array( strtolower( $path_parts['extension'] ), $this->allowed_file_extensions, true ) ) {
 				// File extension is NOT allowed. Redirect.
@@ -147,7 +119,7 @@ class Csv {
 		}
 
 		// so ... we have a valid action with valid import type and an uploaded file with valid extension
-		// and a valid mime type and a valid redirect page ... all good
+		// and a valid redirect page ... all good
 		// more import methods to come ...
 		switch ( $import_type ) {
 			case 'from_tom':
