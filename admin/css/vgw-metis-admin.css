@@ -215,3 +215,21 @@ div#participant-exclusion {
     height: 30px;
     margin-top: -3px;
 }
+
+.wp-metis-scan-progress {
+    margin-top: 10px;
+}
+
+.wp-metis-scan-progress progress {
+    width: 260px;
+    max-width: 100%;
+    vertical-align: middle;
+}
+
+.wp-metis-scan-progress span {
+    margin-left: 8px;
+}
+
+.wp-metis-scan-message.notice {
+    margin: 10px 0 0;
+}

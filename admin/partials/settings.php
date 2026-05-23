@@ -65,11 +65,16 @@ namespace WP_VGWORT;
         <tr>
             <th scope="row"><?php esc_html_e( 'Scan-Funktion', 'vgw-metis' ) ?></th>
             <td>
-	                <a
+	                <button
 	                    id="btn-scan-page"
-	                    class="button button-secondary"
-	                    href="<?php echo esc_url( wp_nonce_url( admin_url('admin-post.php?action=wp_metis_scan_pixels&page=metis-settings'), 'wp_metis_scan_pixels' ) ); ?>"><?php esc_html_e( "Scan starten", 'vgw-metis' ) ?>
-	                </a>
+	                    type="button"
+	                    class="button button-secondary"><?php esc_html_e( "Scan starten", 'vgw-metis' ) ?>
+	                </button>
+                <div id="wp-metis-scan-progress" class="wp-metis-scan-progress" hidden>
+                    <progress id="wp-metis-scan-progress-bar" max="100" value="0"></progress>
+                    <span id="wp-metis-scan-progress-text"></span>
+                </div>
+                <div id="wp-metis-scan-message" class="wp-metis-scan-message" aria-live="polite"></div>
                 <p class="description"><?php esc_html_e( 'Beiträge und Seiten nach Zählmarken durchsuchen und verknüpfen.', 'vgw-metis' ) ?></p>
             </td>
         </tr>

@@ -174,18 +174,60 @@ class Page_Settings extends Page {
 		add_action( 'admin_init', [ $this, 'register_plugin_settings' ] );
 		// register the build settings form action
 		add_action( 'admin_init', [ $this, 'build_settings_form' ] );
+		// enqueue settings page assets
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_script' ] );
 		// register custom plugin action for validating api key
 		add_action( 'admin_post_wp_metis_check_api_key', [ $this, 'check_api_key' ] );
 		// register custom plugin action for ordering new pixels
 		add_action( 'admin_post_wp_metis_order_pixels', [ $this, 'order_pixels' ] );
 		// register custom plugin action for checking all existing pixels
 		add_action( 'admin_post_wp_metis_check_pixels', [ $this, 'check_pixels' ] );
-		// register custom plugin action for scanning the posts contents for pixel
-		add_action( 'admin_post_wp_metis_scan_pixels', [ $this, 'scan_pixels' ] );
+		// register ajax actions for batch scanning post contents for pixel
+		add_action( 'wp_ajax_wp_metis_scan_pixels_init', [ $this, 'scan_pixels_init_ajax' ] );
+		add_action( 'wp_ajax_wp_metis_scan_pixels_batch', [ $this, 'scan_pixels_batch_ajax' ] );
 		// display a notice when there is no api key saved in settings
 		if ( ! $this->has_valid_api_key() ) {
 			add_action( 'admin_notices', [ $this, 'display_api_key_missing_notice' ] );
 		}
+	}
+
+	/**
+	 * Enqueue the settings page JavaScript.
+	 *
+	 * @return void
+	 */
+	public function enqueue_script(): void {
+		$request = wp_unslash( $_GET );
+		$page    = isset( $request['page'] ) && is_scalar( $request['page'] ) ? sanitize_key( (string) $request['page'] ) : '';
+
+		if ( $page !== 'metis-settings' ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'wp_metis_settings_script',
+			plugin_dir_url( __FILE__ ) . 'js/settings.js',
+			[ 'jquery' ],
+			$this->plugin::VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'wp_metis_settings_script',
+			'wpMetisSettingsScan',
+			[
+				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+				'nonce'     => wp_create_nonce( 'wp_metis_scan_pixels_ajax' ),
+				'batchSize' => 10,
+				'texts'     => [
+					'running'  => esc_html__( 'Scan läuft...', 'vgw-metis' ),
+					'progress' => esc_html__( '%1$s / %2$s geprüft', 'vgw-metis' ),
+					'finished' => esc_html__( 'Scan abgeschlossen.', 'vgw-metis' ),
+					'summary'  => esc_html__( 'Neue Zuweisungen: %1$s. Bereits vorhanden: %2$s. Fehlerhaft: %3$s.', 'vgw-metis' ),
+					'error'    => esc_html__( 'Fehler beim Scan von Zählmarken.', 'vgw-metis' ),
+				],
+			]
+		);
 	}
 
 	/**
@@ -211,6 +253,21 @@ class Page_Settings extends Page {
 		}
 
 		check_admin_referer( $action );
+	}
+
+	/**
+	 * Verify permission and nonce for privileged settings AJAX actions.
+	 *
+	 * @return void
+	 */
+	private function verify_settings_ajax_action(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Permission denied.', 'vgw-metis' ) ], 403 );
+		}
+
+		if ( ! check_ajax_referer( 'wp_metis_scan_pixels_ajax', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Invalid request.', 'vgw-metis' ) ], 400 );
+		}
 	}
 
 	/**
@@ -266,20 +323,38 @@ class Page_Settings extends Page {
 	}
 
 	/**
-	 * scan the site for existing pixels and redirect with success / error message
+	 * Initialize the AJAX pixel scan and return the total item count.
 	 *
 	 * @return void
 	 */
-	public function scan_pixels(): void {
-		$this->verify_settings_action( 'wp_metis_scan_pixels' );
+	public function scan_pixels_init_ajax(): void {
+		$this->verify_settings_ajax_action();
 
-		$response = Scan_Services::scan_posts_for_pixels();
-		if ( $response ) {
-			wp_redirect( admin_url( 'admin.php?page=metis-settings&notice=scan_pixels_success&&custom_text=' . $response ) );
-		} else {
-			wp_redirect( admin_url( 'admin.php?page=metis-settings&notice=scan_pixels_error' ) );
+		wp_send_json_success(
+			[
+				'total' => Scan_Services::get_scan_posts_count(),
+			]
+		);
+	}
+
+	/**
+	 * Scan one AJAX batch and return batch progress.
+	 *
+	 * @return void
+	 */
+	public function scan_pixels_batch_ajax(): void {
+		$this->verify_settings_ajax_action();
+
+		$request    = wp_unslash( $_POST );
+		$offset     = isset( $request['offset'] ) && is_scalar( $request['offset'] ) ? absint( $request['offset'] ) : 0;
+		$batch_size = isset( $request['batch_size'] ) && is_scalar( $request['batch_size'] ) ? absint( $request['batch_size'] ) : 10;
+		$batch_size = min( 50, max( 1, $batch_size ) );
+
+		try {
+			wp_send_json_success( Scan_Services::scan_posts_for_pixels_batch( $offset, $batch_size ) );
+		} catch ( \Exception $e ) {
+			wp_send_json_error( [ 'message' => esc_html__( 'Fehler beim Scan von Zählmarken.', 'vgw-metis' ) ], 500 );
 		}
-		exit;
 	}
 
 	/**

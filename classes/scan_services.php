@@ -3,7 +3,7 @@ namespace WP_VGWORT;
 
 class Scan_Services extends Services {
 
-	private const FRONTEND_SCAN_TIMEOUT_IN_SECONDS = 7;
+	private const FRONTEND_SCAN_TIMEOUT_IN_SECONDS = 3;
 
     /**
 	 * Scans post HTML for pixel. Checks if there is any other pixels already assigned to post and if not assignes it.
@@ -135,10 +135,12 @@ class Scan_Services extends Services {
 		$this->_log .= "Scanning post '" . $post->post_title . "' for pixels.\n";
 		$pixels = $this->search_for_pixels_in_content($post->post_content);
 
-		$rendered_html = $this->get_rendered_post_html($post);
+		if (empty($pixels)) {
+			$rendered_html = $this->get_rendered_post_html($post);
 
-		if ($rendered_html !== null) {
-			$pixels = array_merge($pixels, $this->search_for_pixels_in_content($rendered_html));
+			if ($rendered_html !== null) {
+				$pixels = $this->search_for_pixels_in_content($rendered_html);
+			}
 		}
 
 		$pixels = $this->deduplicate_pixels($pixels);
@@ -183,7 +185,10 @@ class Scan_Services extends Services {
 		$services = new Scan_Services();
 		$args  = array(
 			'post_type'   => array( 'page', 'post' ),
+			'post_status' => 'publish',
 			'numberposts' => - 1,
+			'orderby'     => 'ID',
+			'order'       => 'ASC',
 		);
 		$posts = get_posts( $args );
 		try {
@@ -204,6 +209,65 @@ class Scan_Services extends Services {
 		       "." .
 		       esc_html__( " Fehlerhaft: ", 'vgw-metis' ) .
 		       $stat['failure'];
+	}
+
+	/**
+	 * Count all published posts and pages that can be scanned.
+	 *
+	 * @return int
+	 */
+	public static function get_scan_posts_count(): int {
+		$count = 0;
+		foreach ( array( 'page', 'post' ) as $post_type ) {
+			$post_count = wp_count_posts( $post_type );
+			if ( isset( $post_count->publish ) ) {
+				$count += (int) $post_count->publish;
+			}
+		}
+
+		return $count;
+	}
+
+	/**
+	 * Scan a limited batch of published posts and pages.
+	 *
+	 * @param int $offset Batch offset.
+	 * @param int $limit  Batch size.
+	 *
+	 * @return array
+	 */
+	public static function scan_posts_for_pixels_batch( int $offset, int $limit ): array {
+		$offset   = max( 0, $offset );
+		$limit    = max( 1, $limit );
+		$total    = self::get_scan_posts_count();
+		$services = new Scan_Services();
+		$args     = array(
+			'post_type'   => array( 'page', 'post' ),
+			'post_status' => 'publish',
+			'numberposts' => $limit,
+			'offset'      => $offset,
+			'orderby'     => 'ID',
+			'order'       => 'ASC',
+		);
+		$posts    = get_posts( $args );
+
+		foreach ( $posts as $post ) {
+			$services->scan_post_for_pixels( $post );
+		}
+
+		$processed   = count( $posts );
+		$next_offset = min( $total, $offset + $processed );
+		$stat        = $services->get_stat();
+
+		return array(
+			'processed'           => $processed,
+			'total'               => $total,
+			'next_offset'         => $next_offset,
+			'done'                => $next_offset >= $total || $processed === 0,
+			'new_assigned_pixels' => $stat['new_assigned_pixels'],
+			'already_found'       => $stat['already_found'],
+			'failure'             => $stat['failure'],
+		);
 	}
 
     /**
