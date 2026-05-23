@@ -121,11 +121,19 @@ class Csv {
 		}
 
 		if ( isset( $_FILES['wp_metis_csv_upload']['tmp_name'] ) && $this->is_uploaded_file_check( $_FILES['wp_metis_csv_upload']['tmp_name'] ) ) {
-			$mime_type = sanitize_mime_type( mime_content_type( $_FILES['wp_metis_csv_upload']['tmp_name'] ) );
+			$detected_mime_type = mime_content_type( $_FILES['wp_metis_csv_upload']['tmp_name'] );
+			$mime_type          = is_string( $detected_mime_type ) ? sanitize_mime_type( $detected_mime_type ) : '';
 
 			if ( ! in_array( $mime_type, $this->allowed_mime_types, true ) ) {
 				// File type / MIME type is NOT allowed. Redirect.
-				Services::redirect_to_vgw_metis_page( 'metis-settings', $this->get_import_notice_key( $import_type, 'file_mime_type' ) );
+				Services::redirect_to_vgw_metis_page(
+					'metis-settings',
+					$this->get_import_notice_key( $import_type, 'file_mime_type' ),
+					sprintf(
+						esc_html__( 'Erkannter MIME-Type: %s', 'vgw-metis' ),
+						$mime_type ?: esc_html__( 'unbekannt', 'vgw-metis' )
+					)
+				);
 			}
 
 			$path_parts = pathinfo( sanitize_file_name( $_FILES['wp_metis_csv_upload']['name'] ) );
