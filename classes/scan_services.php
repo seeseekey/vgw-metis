@@ -3,6 +3,8 @@ namespace WP_VGWORT;
 
 class Scan_Services extends Services {
 
+	private const FRONTEND_SCAN_TIMEOUT_IN_SECONDS = 7;
+
     /**
 	 * Scans post HTML for pixel. Checks if there is any other pixels already assigned to post and if not assignes it.
 	 * It there is already pixel on post and is not the same, it unsaignes it and replaces it.
@@ -50,6 +52,79 @@ class Scan_Services extends Services {
 	}
 
 	/**
+	 * Fetches the rendered frontend HTML for a post, if available.
+	 *
+	 * @param post $post
+	 *
+	 * @return string|null
+	 */
+	private function get_rendered_post_html($post): ?string {
+
+		$permalink = get_permalink($post);
+
+		if (empty($permalink)) {
+			$this->_log .= "No permalink found for post '" . $post->post_title . "'.\n";
+			return null;
+		}
+
+		$response = wp_remote_get(
+			$permalink,
+			[
+				'timeout' => self::FRONTEND_SCAN_TIMEOUT_IN_SECONDS,
+			]
+		);
+
+		if (is_wp_error($response)) {
+			$this->_log .= "Rendered HTML for post '" . $post->post_title . "' could not be fetched: " . $response->get_error_message() . "\n";
+			return null;
+		}
+
+		$response_code = wp_remote_retrieve_response_code($response);
+
+		if ($response_code < 200 || $response_code >= 300) {
+			$this->_log .= "Rendered HTML for post '" . $post->post_title . "' returned HTTP status " . $response_code . ".\n";
+			return null;
+		}
+
+		$body = wp_remote_retrieve_body($response);
+
+		if (empty($body)) {
+			$this->_log .= "Rendered HTML for post '" . $post->post_title . "' was empty.\n";
+			return null;
+		}
+
+		return $body;
+	}
+
+	/**
+	 * Removes duplicate pixels from multiple scan sources.
+	 *
+	 * @param Pixel[] $pixels
+	 *
+	 * @return Pixel[]
+	 */
+	private function deduplicate_pixels(array $pixels): array {
+
+		$deduplicated_pixel_ids = [];
+		$deduplicated_pixels    = [];
+
+		foreach ($pixels as $pixel) {
+
+			$public_identification_id = $pixel->get_public_identification_id();
+			$public_identification_id_key = strtolower($public_identification_id);
+
+			if (isset($deduplicated_pixel_ids[$public_identification_id_key])) {
+				continue;
+			}
+
+			$deduplicated_pixel_ids[$public_identification_id_key] = true;
+			$deduplicated_pixels[]                                 = $pixel;
+		}
+
+		return $deduplicated_pixels;
+	}
+
+	/**
 	 * Scans post HTML for pixels. If there are none, does nothing, otherwise iterates through them and ckecks for assignment.
 	 *
 	 * @param post post
@@ -58,8 +133,15 @@ class Scan_Services extends Services {
 	 */
 	public function scan_post_for_pixels($post) {
 		$this->_log .= "Scanning post '" . $post->post_title . "' for pixels.\n";
-		// Get all pixels with correct domain
 		$pixels = $this->search_for_pixels_in_content($post->post_content);
+
+		$rendered_html = $this->get_rendered_post_html($post);
+
+		if ($rendered_html !== null) {
+			$pixels = array_merge($pixels, $this->search_for_pixels_in_content($rendered_html));
+		}
+
+		$pixels = $this->deduplicate_pixels($pixels);
 		if (empty($pixels)) {
 			$this->_log .= "No pixels found in post '" . $post->post_title . "'.\n";
 			return Assignment::NONE;
