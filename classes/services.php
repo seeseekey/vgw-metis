@@ -276,38 +276,42 @@ class Services {
 	/**
 	 * Function will search for pixel in the given content
 	 *
-	 * Returns a Pixel if a pixel was found, Returns null if no pixel was found.
+	 * Returns an array of Pixels found in image tags, attributes, or raw HTML.
 	 *
 	 * @param string $content html string
 	 *
-	 * @return Pixel|null    pixel if found, null else
+	 * @return Pixel[] pixels if found, empty array else
 	 */
 	public static function search_for_pixels_in_content( string $content ): array {
-		libxml_use_internal_errors(true);
 		$pixels = [];
-		try {
-			if ( str_contains( $content, Common::PIXEL_DOMAIN ) ) {
-				$html_obj = new \DOMDocument();
-				$html_obj->loadHTML( $content, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
-				$length = $html_obj->getElementsByTagName( "img" )->length;
-				for ( $index_tags = 0; $index_tags < $length; $index_tags ++ ) {
-					$img_src = $html_obj->getElementsByTagName( "img" )->item( $index_tags )->getAttribute( "src" );
-					if ( str_contains( $img_src, Common::PIXEL_DOMAIN ) ) {
-						$src_parts       = explode( "/", $img_src );
-						$domain          = $src_parts[2];
-						$public_pixel_id = $src_parts[ count( $src_parts ) - 1 ];
-						$pixel           = new Pixel();
-						$pixel->set_domain( $domain );
-						$pixel->set_public_identification_id( $public_pixel_id );
 
-						$pixels[] = $pixel;
-					}
-				}
-				return $pixels;
-			}
-		} catch ( \Exception $e ) {
+		if ( ! str_contains( $content, Common::PIXEL_DOMAIN ) ) {
 			return $pixels;
 		}
+
+		$search_content = html_entity_decode( str_replace( '\/', '/', $content ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+		$pattern        = '#(?:https?:)?//((?:[a-z0-9-]+\.)*' . preg_quote( Common::PIXEL_DOMAIN, '#' ) . ')/na/([a-f0-9]{32,100})(?=[^a-f0-9]|$)#i';
+
+		if ( preg_match_all( $pattern, $search_content, $matches, PREG_SET_ORDER ) ) {
+			$public_pixel_ids = [];
+			foreach ( $matches as $match ) {
+				$domain          = strtolower( $match[1] );
+				$public_pixel_id = $match[2];
+
+				$public_pixel_id_key = strtolower( $public_pixel_id );
+				if ( isset( $public_pixel_ids[ $public_pixel_id_key ] ) || ! Common::is_valid_pixel_id_format( $public_pixel_id ) ) {
+					continue;
+				}
+
+				$pixel = new Pixel();
+				$pixel->set_domain( $domain );
+				$pixel->set_public_identification_id( $public_pixel_id );
+
+				$pixels[]                                  = $pixel;
+				$public_pixel_ids[ $public_pixel_id_key ] = true;
+			}
+		}
+
 		return $pixels;
 	}
 
