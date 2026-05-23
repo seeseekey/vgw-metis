@@ -206,15 +206,15 @@ class Admin {
 		<label for="vgw-metis-pixel-assignment-filter" class="screen-reader-text">
 			<?php esc_html_e( 'Nach Zählmarken-Zuordnung filtern', 'vgw-metis' ); ?>
 		</label>
-		<select name="vgw_metis_pixel_assignment" id="vgw-metis-pixel-assignment-filter">
+		<select name="vgw_metis_pixel_assignment" id="vgw-metis-pixel-assignment-filter" style="min-width: 220px;">
 			<option value="" <?php selected( $filter, '' ); ?>>
 				<?php esc_html_e( 'Alle Zählmarken', 'vgw-metis' ); ?>
 			</option>
 			<option value="assigned" <?php selected( $filter, 'assigned' ); ?>>
-				<?php esc_html_e( 'Zählmarke zugeordnet', 'vgw-metis' ); ?>
+				<?php esc_html_e( 'Zählmarke zugewiesen', 'vgw-metis' ); ?>
 			</option>
 			<option value="unassigned" <?php selected( $filter, 'unassigned' ); ?>>
-				<?php esc_html_e( 'Zählmarke nicht zugeordnet', 'vgw-metis' ); ?>
+				<?php esc_html_e( 'Zählmarke nicht zugewiesen', 'vgw-metis' ); ?>
 			</option>
 		</select>
 		<?php
