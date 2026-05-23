@@ -106,7 +106,7 @@ class Notifications {
 			$item = $this->notifications_by_key[ $notification_key ];
 			?>
             <div class="<?php echo esc_attr( $item['classes'] ); ?>">
-                <p><?php esc_html_e( $item['message'] ) ?> <? esc_html_e( $custom_text ); ?></p>
+                <p><?php echo esc_html( $item['message'] ); ?> <?php echo esc_html( $custom_text ); ?></p>
             </div>
 			<?php
 		}
