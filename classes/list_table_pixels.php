@@ -106,29 +106,37 @@ class List_Table_Pixels extends \WP_List_Table {
 	private function get_table_data(): array {
 		$statefilter = ! empty( $_GET['state'] ) ? sanitize_key( $_GET['state'] ) : '';
 
-		$order = ! empty( $_GET['order'] ) ? sanitize_key( $_GET['order'] ) : 'asc';
+		$order             = $this->get_order();
+		$requested_orderby = $this->get_requested_orderby();
+		$orderby           = $this->get_orderby( $requested_orderby, $order );
+		$is_php_orderby    = $requested_orderby === 'min_hits';
 
 		$assigned = null;
 		$active   = null;
 		$disabled = null;
-		$orderby  = array();
 		$multiple  = false;
 
 		switch ( $statefilter ) {
 			case '':
-				$orderby += array( 'assigned' => $order );
-				$orderby += array( 'active' => 'asc' );
-				$orderby += array( 'disabled' => 'asc' );
+				if ( empty( $orderby ) && ! $is_php_orderby ) {
+					$orderby += array( 'assigned' => $order );
+					$orderby += array( 'active' => 'asc' );
+					$orderby += array( 'disabled' => 'asc' );
+				}
 				break;
 			case Common::STATE_PIXEL_ASSIGNED:
 				$assigned = true;
 				$active   = true;
-				$orderby  += array( 'disabled' => 'asc' );
+				if ( empty( $orderby ) && ! $is_php_orderby ) {
+					$orderby += array( 'disabled' => 'asc' );
+				}
 				break;
 			case Common::STATE_PIXEL_ASSIGNED_MULTIPLE:
 				$assigned = true;
 				$active   = true;
-				$orderby  += array( 'disabled' => 'asc' );
+				if ( empty( $orderby ) && ! $is_php_orderby ) {
+					$orderby += array( 'disabled' => 'asc' );
+				}
 				$multiple  = true;
 				break;
 			case Common::STATE_PIXEL_AVAILABLE:
@@ -145,7 +153,175 @@ class List_Table_Pixels extends \WP_List_Table {
 				break;
 		}
 
-		return DB_Pixels::get_all_pixels( $assigned, $active, $disabled, null, null, $orderby, $multiple );
+		$items = DB_Pixels::get_all_pixels( $assigned, $active, $disabled, null, null, $orderby, $multiple );
+
+		if ( ! is_array( $items ) ) {
+			return array();
+		}
+
+		if ( $is_php_orderby ) {
+			return $this->sort_items( $items, $requested_orderby, $order );
+		}
+
+		return $items;
+	}
+
+	/**
+	 * get sanitized order direction from request
+	 *
+	 * @return string
+	 */
+	private function get_order(): string {
+		$order = ! empty( $_GET['order'] ) ? strtolower( sanitize_key( $_GET['order'] ) ) : 'asc';
+
+		return in_array( $order, array( 'asc', 'desc' ), true ) ? $order : 'asc';
+	}
+
+	/**
+	 * get whitelisted orderby value from request
+	 *
+	 * @return string
+	 */
+	private function get_requested_orderby(): string {
+		$orderby = ! empty( $_GET['orderby'] ) ? sanitize_key( $_GET['orderby'] ) : '';
+
+		return in_array( $orderby, array(
+			'public_identification_id',
+			'private_identification_id',
+			'ordered_at',
+			'count_started',
+			'min_hits',
+			'post_title',
+			'message_date',
+			'state',
+		), true ) ? $orderby : '';
+	}
+
+	/**
+	 * get SQL orderby information from whitelisted orderby value
+	 *
+	 * @param string $orderby requested orderby value
+	 * @param string $order sort direction
+	 *
+	 * @return array
+	 */
+	private function get_orderby( string $orderby, string $order ): array {
+		switch ( $orderby ) {
+			case 'public_identification_id':
+				return array( 'pixel_public_identification_id' => $order );
+			case 'private_identification_id':
+				return array( 'private_identification_id' => $order );
+			case 'ordered_at':
+				return array( 'ordered_at' => $order );
+			case 'count_started':
+				return array( 'count_started' => $order );
+			case 'post_title':
+				return array( 'post_title' => $order );
+			case 'message_date':
+				return array( 'message_created_at' => $order );
+			case 'state':
+				return array(
+					'assigned' => $order,
+					'active'   => 'asc',
+					'disabled' => 'asc',
+				);
+		}
+
+		return array();
+	}
+
+	/**
+	 * sort items by a PHP-computed value
+	 *
+	 * @param array  $items   table items
+	 * @param string $orderby requested orderby value
+	 * @param string $order   sort direction
+	 *
+	 * @return array
+	 */
+	private function sort_items( array $items, string $orderby, string $order ): array {
+		usort( $items, function ( $left, $right ) use ( $orderby, $order ) {
+			$left_value  = $this->get_sort_value( $left, $orderby );
+			$right_value = $this->get_sort_value( $right, $orderby );
+
+			if ( $orderby === 'min_hits' && ( $left_value === '' || $right_value === '' ) ) {
+				if ( $left_value === $right_value ) {
+					$comparison = 0;
+				} elseif ( $left_value === '' ) {
+					$comparison = 1;
+				} else {
+					$comparison = -1;
+				}
+			} else {
+				$comparison = strnatcasecmp( $left_value, $right_value );
+
+				if ( $order === 'desc' ) {
+					$comparison = - $comparison;
+				}
+			}
+
+			if ( $comparison === 0 ) {
+				$comparison = strnatcasecmp(
+					(string) ( $left['public_identification_id'] ?? '' ),
+					(string) ( $right['public_identification_id'] ?? '' )
+				);
+			}
+
+			return $comparison;
+		} );
+
+		return $items;
+	}
+
+	/**
+	 * get comparable sort value for a PHP-sorted item
+	 *
+	 * @param array  $item    table item
+	 * @param string $orderby requested orderby value
+	 *
+	 * @return string
+	 */
+	private function get_sort_value( array $item, string $orderby ): string {
+		if ( $orderby === 'min_hits' ) {
+			return $this->get_min_hits_sort_value( $item );
+		}
+
+		return '';
+	}
+
+	/**
+	 * get sortable year list from min hits badge data
+	 *
+	 * @param array $item table item
+	 *
+	 * @return string
+	 */
+	private function get_min_hits_sort_value( array $item ): string {
+		if ( empty( $item['min_hits'] ) ) {
+			return '';
+		}
+
+		$min_hits = json_decode( $item['min_hits'] );
+
+		if ( ! is_array( $min_hits ) ) {
+			return '';
+		}
+
+		$years = array();
+
+		foreach ( $min_hits as $min_hit ) {
+			if ( isset( $min_hit->year ) ) {
+				$years[] = (int) $min_hit->year;
+			}
+		}
+
+		if ( empty( $years ) ) {
+			return '';
+		}
+
+		sort( $years, SORT_NUMERIC );
+
+		return implode( ',', $years );
 	}
 
 	/**
@@ -307,7 +483,14 @@ class List_Table_Pixels extends \WP_List_Table {
 	 */
 	protected function get_sortable_columns(): array {
 		return array(
-			'state' => array( 'state', true ),
+			'public_identification_id'  => array( 'public_identification_id', false ),
+			'private_identification_id' => array( 'private_identification_id', false ),
+			'ordered_at'                => array( 'ordered_at', false ),
+			'count_started'             => array( 'count_started', false ),
+			'min_hits'                  => array( 'min_hits', false ),
+			'post_title'                => array( 'post_title', false ),
+			'message_date'              => array( 'message_date', false ),
+			'state'                     => array( 'state', true ),
 		);
 	}
 

@@ -210,7 +210,8 @@ class Db_Pixels {
 		}
 
 		$result = $wpdb->get_results( "
-				SELECT 
+				SELECT
+				    pixels.public_identification_id AS pixel_public_identification_id,
 				    pixels.*,
 				    IF(pixelposts.public_identification_id IS NULL, 0, 1 ) as assigned,
 				    pixelposts.active as active,
