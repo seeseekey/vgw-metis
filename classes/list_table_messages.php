@@ -153,7 +153,116 @@ class List_Table_Messages extends \WP_List_Table {
 		}
 
 
-		return $filtered_items;
+		return $this->sort_items( $filtered_items );
+	}
+
+	/**
+	 * sort items by a whitelisted request column
+	 *
+	 * @param array $items table items
+	 *
+	 * @return array
+	 */
+	private function sort_items( array $items ): array {
+		$orderby = $this->get_orderby();
+
+		if ( empty( $orderby ) ) {
+			return $items;
+		}
+
+		$order = $this->get_order();
+
+		usort( $items, function ( $left, $right ) use ( $orderby, $order ) {
+			$left_value  = $this->get_sort_value( $left, $orderby );
+			$right_value = $this->get_sort_value( $right, $orderby );
+
+			if ( is_int( $left_value ) && is_int( $right_value ) ) {
+				$comparison = $left_value <=> $right_value;
+			} else {
+				$comparison = strnatcasecmp( (string) $left_value, (string) $right_value );
+			}
+
+			if ( $comparison === 0 ) {
+				$comparison = (int) ( $left['post_id'] ?? 0 ) <=> (int) ( $right['post_id'] ?? 0 );
+			}
+
+			return $order === 'desc' ? - $comparison : $comparison;
+		} );
+
+		return $items;
+	}
+
+	/**
+	 * get sanitized order direction from request
+	 *
+	 * @return string
+	 */
+	private function get_order(): string {
+		$order = ! empty( $_GET['order'] ) ? strtolower( sanitize_key( $_GET['order'] ) ) : 'asc';
+
+		return in_array( $order, array( 'asc', 'desc' ), true ) ? $order : 'asc';
+	}
+
+	/**
+	 * get whitelisted orderby value from request
+	 *
+	 * @return string
+	 */
+	private function get_orderby(): string {
+		$orderby = ! empty( $_GET['orderby'] ) ? sanitize_key( $_GET['orderby'] ) : '';
+
+		return in_array( $orderby, array( 'post_title', 'post_type', 'text_length', 'count_started', 'state' ), true ) ? $orderby : '';
+	}
+
+	/**
+	 * get comparable sort value for an item
+	 *
+	 * @param array  $item    table item
+	 * @param string $orderby requested orderby value
+	 *
+	 * @return int|string
+	 */
+	private function get_sort_value( array $item, string $orderby ): int|string {
+		switch ( $orderby ) {
+			case 'post_type':
+				return $this->get_post_type_label( $item );
+			case 'text_length':
+				return (int) ( $item['text_length'] ?? 0 );
+			case 'count_started':
+				return ! empty( $item['count_started'] ) ? 1 : 0;
+			case 'state':
+				$state_order = array(
+					Common::STATE_MESSAGE_REPORTED       => 1,
+					Common::STATE_MESSAGE_NOT_REPORTED   => 2,
+					Common::STATE_MESSAGE_NOT_REPORTABLE => 3,
+				);
+
+				return $state_order[ $item['state'] ?? '' ] ?? 0;
+			case 'post_title':
+				return $item['post_title'] ?? '';
+		}
+
+		return '';
+	}
+
+	/**
+	 * get post type label for an item
+	 *
+	 * @param array $item table item
+	 *
+	 * @return string
+	 */
+	private function get_post_type_label( array $item ): string {
+		if ( ! empty( $item['post_id'] ) ) {
+			global $wp_post_types;
+			$post_type = get_post_type( $item['post_id'] );
+
+			if ( ! empty( $wp_post_types[ $post_type ] ) ) {
+				return $wp_post_types[ $post_type ]->labels->singular_name;
+			}
+		}
+
+		return '';
 	}
 
 	/**
@@ -193,13 +302,7 @@ class List_Table_Messages extends \WP_List_Table {
 	 */
 
 	public function column_post_type( $item ): string {
-		if ( ! empty( $item['post_id'] ) ) {
-			global $wp_post_types;
-			$obj = $wp_post_types[get_post_type( $item['post_id'] )];
-			return $obj->labels->singular_name;
-		}
-
-		return '';
+		return $this->get_post_type_label( $item );
 	}
 
 	/**
@@ -347,7 +450,13 @@ class List_Table_Messages extends \WP_List_Table {
 	 * @return array[]
 	 */
 	protected function get_sortable_columns(): array {
-		return array();
+		return array(
+			'post_title'    => array( 'post_title', false ),
+			'post_type'     => array( 'post_type', false ),
+			'text_length'   => array( 'text_length', false ),
+			'count_started' => array( 'count_started', false ),
+			'state'         => array( 'state', false ),
+		);
 	}
 
 	/**

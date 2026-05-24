@@ -106,29 +106,35 @@ class List_Table_Pixels extends \WP_List_Table {
 	private function get_table_data(): array {
 		$statefilter = ! empty( $_GET['state'] ) ? sanitize_key( $_GET['state'] ) : '';
 
-		$order = ! empty( $_GET['order'] ) ? sanitize_key( $_GET['order'] ) : 'asc';
+		$order   = $this->get_order();
+		$orderby = $this->get_orderby( $order );
 
 		$assigned = null;
 		$active   = null;
 		$disabled = null;
-		$orderby  = array();
 		$multiple  = false;
 
 		switch ( $statefilter ) {
 			case '':
-				$orderby += array( 'assigned' => $order );
-				$orderby += array( 'active' => 'asc' );
-				$orderby += array( 'disabled' => 'asc' );
+				if ( empty( $orderby ) ) {
+					$orderby += array( 'assigned' => $order );
+					$orderby += array( 'active' => 'asc' );
+					$orderby += array( 'disabled' => 'asc' );
+				}
 				break;
 			case Common::STATE_PIXEL_ASSIGNED:
 				$assigned = true;
 				$active   = true;
-				$orderby  += array( 'disabled' => 'asc' );
+				if ( empty( $orderby ) ) {
+					$orderby += array( 'disabled' => 'asc' );
+				}
 				break;
 			case Common::STATE_PIXEL_ASSIGNED_MULTIPLE:
 				$assigned = true;
 				$active   = true;
-				$orderby  += array( 'disabled' => 'asc' );
+				if ( empty( $orderby ) ) {
+					$orderby += array( 'disabled' => 'asc' );
+				}
 				$multiple  = true;
 				break;
 			case Common::STATE_PIXEL_AVAILABLE:
@@ -146,6 +152,51 @@ class List_Table_Pixels extends \WP_List_Table {
 		}
 
 		return DB_Pixels::get_all_pixels( $assigned, $active, $disabled, null, null, $orderby, $multiple );
+	}
+
+	/**
+	 * get sanitized order direction from request
+	 *
+	 * @return string
+	 */
+	private function get_order(): string {
+		$order = ! empty( $_GET['order'] ) ? strtolower( sanitize_key( $_GET['order'] ) ) : 'asc';
+
+		return in_array( $order, array( 'asc', 'desc' ), true ) ? $order : 'asc';
+	}
+
+	/**
+	 * get whitelisted orderby information from request
+	 *
+	 * @param string $order sort direction
+	 *
+	 * @return array
+	 */
+	private function get_orderby( string $order ): array {
+		$orderby = ! empty( $_GET['orderby'] ) ? sanitize_key( $_GET['orderby'] ) : '';
+
+		switch ( $orderby ) {
+			case 'public_identification_id':
+				return array( 'pixel_public_identification_id' => $order );
+			case 'private_identification_id':
+				return array( 'private_identification_id' => $order );
+			case 'ordered_at':
+				return array( 'ordered_at' => $order );
+			case 'count_started':
+				return array( 'count_started' => $order );
+			case 'post_title':
+				return array( 'post_title' => $order );
+			case 'message_date':
+				return array( 'message_created_at' => $order );
+			case 'state':
+				return array(
+					'assigned' => $order,
+					'active'   => 'asc',
+					'disabled' => 'asc',
+				);
+		}
+
+		return array();
 	}
 
 	/**
@@ -307,7 +358,13 @@ class List_Table_Pixels extends \WP_List_Table {
 	 */
 	protected function get_sortable_columns(): array {
 		return array(
-			'state' => array( 'state', true ),
+			'public_identification_id'  => array( 'public_identification_id', false ),
+			'private_identification_id' => array( 'private_identification_id', false ),
+			'ordered_at'                => array( 'ordered_at', false ),
+			'count_started'             => array( 'count_started', false ),
+			'post_title'                => array( 'post_title', false ),
+			'message_date'              => array( 'message_date', false ),
+			'state'                     => array( 'state', true ),
 		);
 	}
 
