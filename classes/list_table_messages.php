@@ -176,17 +176,29 @@ class List_Table_Messages extends \WP_List_Table {
 			$left_value  = $this->get_sort_value( $left, $orderby );
 			$right_value = $this->get_sort_value( $right, $orderby );
 
-			if ( is_int( $left_value ) && is_int( $right_value ) ) {
+			if ( $orderby === 'min_hits' && ( $left_value === '' || $right_value === '' ) ) {
+				if ( $left_value === $right_value ) {
+					$comparison = 0;
+				} elseif ( $left_value === '' ) {
+					$comparison = 1;
+				} else {
+					$comparison = -1;
+				}
+			} elseif ( is_int( $left_value ) && is_int( $right_value ) ) {
 				$comparison = $left_value <=> $right_value;
 			} else {
 				$comparison = strnatcasecmp( (string) $left_value, (string) $right_value );
+			}
+
+			if ( $orderby !== 'min_hits' || ( $left_value !== '' && $right_value !== '' ) ) {
+				$comparison = $order === 'desc' ? - $comparison : $comparison;
 			}
 
 			if ( $comparison === 0 ) {
 				$comparison = (int) ( $left['post_id'] ?? 0 ) <=> (int) ( $right['post_id'] ?? 0 );
 			}
 
-			return $order === 'desc' ? - $comparison : $comparison;
+			return $comparison;
 		} );
 
 		return $items;
@@ -211,7 +223,7 @@ class List_Table_Messages extends \WP_List_Table {
 	private function get_orderby(): string {
 		$orderby = ! empty( $_GET['orderby'] ) ? sanitize_key( $_GET['orderby'] ) : '';
 
-		return in_array( $orderby, array( 'post_title', 'post_type', 'text_length', 'count_started', 'state' ), true ) ? $orderby : '';
+		return in_array( $orderby, array( 'post_title', 'post_type', 'text_length', 'count_started', 'min_hits', 'state' ), true ) ? $orderby : '';
 	}
 
 	/**
@@ -230,6 +242,8 @@ class List_Table_Messages extends \WP_List_Table {
 				return (int) ( $item['text_length'] ?? 0 );
 			case 'count_started':
 				return ! empty( $item['count_started'] ) ? 1 : 0;
+			case 'min_hits':
+				return $this->get_min_hits_sort_value( $item );
 			case 'state':
 				$state_order = array(
 					Common::STATE_MESSAGE_REPORTED       => 1,
@@ -243,6 +257,41 @@ class List_Table_Messages extends \WP_List_Table {
 		}
 
 		return '';
+	}
+
+	/**
+	 * get sortable year list from min hits badge data
+	 *
+	 * @param array $item table item
+	 *
+	 * @return string
+	 */
+	private function get_min_hits_sort_value( array $item ): string {
+		if ( empty( $item['min_hits'] ) ) {
+			return '';
+		}
+
+		$min_hits = json_decode( $item['min_hits'] );
+
+		if ( ! is_array( $min_hits ) ) {
+			return '';
+		}
+
+		$years = array();
+
+		foreach ( $min_hits as $min_hit ) {
+			if ( isset( $min_hit->year ) ) {
+				$years[] = (int) $min_hit->year;
+			}
+		}
+
+		if ( empty( $years ) ) {
+			return '';
+		}
+
+		sort( $years, SORT_NUMERIC );
+
+		return implode( ',', $years );
 	}
 
 	/**
@@ -455,6 +504,7 @@ class List_Table_Messages extends \WP_List_Table {
 			'post_type'     => array( 'post_type', false ),
 			'text_length'   => array( 'text_length', false ),
 			'count_started' => array( 'count_started', false ),
+			'min_hits'      => array( 'min_hits', false ),
 			'state'         => array( 'state', false ),
 		);
 	}
