@@ -29,9 +29,9 @@ namespace WP_VGWORT;
     <h2><?php esc_html_e( 'Meldungsdetails', 'vgw-metis' ); ?></h2>
     <form method="post" id="create-message-form" action="admin-post.php">
         <input type="hidden" name="page" value="metis-message"/>
-        <input type="hidden" name="post_id" value="<?php echo $this->post_id; ?>"/>
+        <input type="hidden" name="post_id" value="<?php echo esc_attr( $this->post_id ); ?>"/>
         <input type="hidden" name="action" value="wp_metis_save_message"/>
-        <input type="hidden" name="post_id" value="<?php echo esc_html($this->post_id); ?>" />
+        <input type="hidden" name="post_id" value="<?php echo esc_attr( $this->post_id ); ?>" />
 		<?php wp_nonce_field( 'wp_metis_save_message', 'message-form-nonce' ); ?>
         <table class="form-table">
             <tbody>
@@ -118,9 +118,9 @@ namespace WP_VGWORT;
                 </th>
                 <td>
                     <output name="text_length"
-                            id="text_length"><?php echo Services::calculate_post_text_length( $this->post_id ); ?></output>
+                            id="text_length"><?php echo esc_html( Services::calculate_post_text_length( $this->post_id ) ); ?></output>
                     <input type="hidden" name="text_length"
-                           value="<?php echo Services::calculate_post_text_length( $this->post_id ); ?>"/>
+                           value="<?php echo esc_attr( Services::calculate_post_text_length( $this->post_id ) ); ?>"/>
                 </td>
             </tr>
             </tbody>
@@ -203,11 +203,11 @@ namespace WP_VGWORT;
                             <select class="participant-function" id="participant-function-select-<?php echo (int) $this->current_user_as_participant->id; ?>">
                                 <option
                                     <?php echo $this->current_user_as_participant->involvement === Common::INVOLVEMENT_AUTHOR ? 'selected' : ''; ?>
-                                        value="<?php echo Common::INVOLVEMENT_AUTHOR; ?>"
+                                        value="<?php echo esc_attr( Common::INVOLVEMENT_AUTHOR ); ?>"
                                 ><?php esc_html_e( 'Autor', 'vgw-metis' ); ?></option>
                                 <option
                                     <?php echo $this->current_user_as_participant->involvement === Common::INVOLVEMENT_TRANSLATOR ? 'selected' : ''; ?>
-                                        value="<?php echo Common::INVOLVEMENT_TRANSLATOR; ?>"
+                                        value="<?php echo esc_attr( Common::INVOLVEMENT_TRANSLATOR ); ?>"
                                 ><?php esc_html_e( 'Übersetzer', 'vgw-metis' ); ?></option>
                             </select>
                             <input
@@ -229,8 +229,8 @@ namespace WP_VGWORT;
                 <input type="text" id="new-participant-last-name" placeholder="<?php esc_attr_e( 'Nachname', 'vgw-metis' ); ?>" />
                 <input type="text" id="new-participant-file-number" placeholder="<?php esc_attr_e( 'Karteinummer', 'vgw-metis' ); ?>" />
                 <select id="new-participant-function">
-                    <option value="<?php echo Common::INVOLVEMENT_AUTHOR; ?>"><?php esc_html_e( 'Autor', 'vgw-metis' ); ?></option>
-                    <option value="<?php echo Common::INVOLVEMENT_TRANSLATOR; ?>"><?php esc_html_e( 'Übersetzer', 'vgw-metis' ); ?></option>
+                    <option value="<?php echo esc_attr( Common::INVOLVEMENT_AUTHOR ); ?>"><?php esc_html_e( 'Autor', 'vgw-metis' ); ?></option>
+                    <option value="<?php echo esc_attr( Common::INVOLVEMENT_TRANSLATOR ); ?>"><?php esc_html_e( 'Übersetzer', 'vgw-metis' ); ?></option>
                 </select>
                 <button type="button" id="add-new-participant-btn" class="button button-secondary"><?php esc_html_e( 'Hinzufügen', 'vgw-metis' ); ?></button>
             </div>
@@ -316,8 +316,8 @@ jQuery(document).ready(function($) {
             '<td>' + pdata.file_number + '</td>' +
             '<td>' +
             '<select class="participant-function" id="participant-function-select-' + pdata.id + '">' +
-            '<option value="<?php echo Common::INVOLVEMENT_AUTHOR; ?>" ' + (pdata.involvement === '<?php echo Common::INVOLVEMENT_AUTHOR; ?>' ? 'selected' : '') + '><?php esc_html_e( 'Autor', 'vgw-metis' ); ?></option>' +
-            '<option value="<?php echo Common::INVOLVEMENT_TRANSLATOR; ?>" ' + (pdata.involvement === '<?php echo Common::INVOLVEMENT_TRANSLATOR; ?>' ? 'selected' : '') + '><?php esc_html_e( 'Übersetzer', 'vgw-metis' ); ?></option>' +
+            '<option value="<?php echo esc_attr( Common::INVOLVEMENT_AUTHOR ); ?>" ' + (pdata.involvement === '<?php echo esc_attr( Common::INVOLVEMENT_AUTHOR ); ?>' ? 'selected' : '') + '><?php esc_html_e( 'Autor', 'vgw-metis' ); ?></option>' +
+            '<option value="<?php echo esc_attr( Common::INVOLVEMENT_TRANSLATOR ); ?>" ' + (pdata.involvement === '<?php echo esc_attr( Common::INVOLVEMENT_TRANSLATOR ); ?>' ? 'selected' : '') + '><?php esc_html_e( 'Übersetzer', 'vgw-metis' ); ?></option>' +
             '</select>' +
             '<input type="hidden" name="participants[]" id="hidden-participant-' + pdata.id + '" value=\'' + JSON.stringify(pdata) + '\' />' +
             '</td>' +
