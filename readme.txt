@@ -8,120 +8,154 @@ Stable tag: 2.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-VG WORT METIS ist das offizielle Plugin der VG WORT zur Verwaltung von Zählmarken für Ihre WordPress Seiten und Beiträge.
+Das offizielle VG-WORT-Plugin zur Verwaltung von METIS-Zählmarken, Meldungen und Beteiligten direkt in WordPress.
 
 == Description ==
-Mit VG WORT METIS wird ab sofort ein seitens der VG WORT offiziell unterstütztes WordPress-Plugin angeboten, das mit dem Meldeportal T.O.M. direkt kompatibel ist. Der Mehrwert wird dadurch geschaffen, dass mit diesem Plugin eine direkte und sichere Verbindung zu T.O.M. ermöglicht wird. Hiermit soll der Einbau von Zählmarken in Ihren WordPress-Einträgen sowie die Verwaltung dieser wesentlich erleichtert werden. 
 
-Das Plugin bietet mehrere Möglichkeiten, Zählmarken den einzelnen Beiträgen und Seiten zuzuweisen, u.a. bei der Erstellung und beim Bearbeiten mit dem Classic- oder Gutenberg-Editor, oder direkt über die Mehrfachaktionen in der Beitrags- und Seitenübersicht. Zudem wird eine Zählmarkenübersichtsseite angeboten, wo Sie den Status Ihrer Zählmarken immer im Blick haben. Die Zählmarken können direkt vom Plugin aus bestellt werden. Ebenfalls gibt es die Möglichkeit, bestehende Zählmarken aus T.O.M. mittels CSV-Datei direkt in das Plugin zu importieren. Auch bereits eingebaute Zählmarken, die beispielsweise mithilfe von anderen Plugins hinzugefügt worden sind, können über die eingebaute Scan-Funktion importiert und den jeweiligen Beiträgen und Seiten automatisch zugewiesen werden.
+VG WORT METIS verbindet WordPress direkt mit dem Meldeportal T.O.M. der VG WORT. Damit lassen sich Zählmarken bestellen, importieren, zu Beiträgen und Seiten zuweisen und für Meldungen vorbereiten, ohne zwischen WordPress und T.O.M. hin und her wechseln zu müssen.
 
-Ab sofort wird auch das direkte Melden vom Plugin unterstützt, und das völlig kostenlos! Es müssen lediglich die Beteiligten ausgewählt oder manuell hinzugefügt werden. In der Beteiligtenverwaltung können häufig benutzte Beteiligte gepflegt werden, die beim Erstellen der Meldung zur Auswahl stehen. Die Meldungsübersicht gibt zudem einen Überblick zu den meldefähigen und bereits gemeldeten Beiträgen und Seiten.
+Das Plugin unterstützt Classic Editor und Gutenberg, bietet eine zentrale Zählmarkenübersicht, erkennt bereits eingebundene Zählmarken im HTML-Quelltext und erleichtert die Erstellung von Meldungen inklusive Beteiligtenverwaltung.
 
-Genauere Informationen zur Funktionsweise sowie eine Kurzanleitung finden Sie direkt im Dashboard des Plugins.
+= Für wen ist das Plugin gedacht? =
 
-= Zielgruppe =
-Das Plugin richtet sich vorerst an alle Autoren, die Unterstützung für Verlage ist in zukünftigen Versionen geplant.
+VG WORT METIS richtet sich aktuell an Autorinnen und Autoren, die ihre METIS-Zählmarken direkt in WordPress verwalten möchten. Die Unterstützung für Verlage ist für zukünftige Versionen geplant.
 
-= Funktionsumfang =
+= Highlights =
+
+* Offiziell unterstütztes Plugin der VG WORT
 * Direkte und sichere Kommunikation mit T.O.M.
-* Automatische Bestellung von Zählmarken
-* Manuelle Bestellung von Zählmarken
-* Import von Zählmarken aus T.O.M.
-* Scan-Funktion zum Importieren und Zuweisen von eingebauten Zählmarken im HTML-Quelltext
-* Zuweisung von Zählmarken bei der Erstellung von Beiträgen und Seiten (Classic- und Gutenberg-Editor)
-* Zuweisung von Zählmarken beim Bearbeiten von Beiträgen und Seiten (Classic- und Gutenberg-Editor)
-* Zählmarkenübersicht
-* Informationen zu Zählmarken in der Beitrags- und Seitenübersicht
-* Beteiligtenverwaltung
-* Meldungsübersicht
-* Meldungserstellung mit und ohne optionalen Zusatzfunktionen
+* Automatische und manuelle Bestellung von Zählmarken
+* Import von Zählmarken aus T.O.M. per CSV-Datei
+* Scan-Funktion für bereits eingebundene Zählmarken im HTML-Quelltext
+* Zuweisung von Zählmarken in Classic Editor und Gutenberg
+* Zentrale Übersicht über zugewiesene und nicht zugewiesene Zählmarken
+* Zusatzinformationen in Beitrags- und Seitenübersichten
+* Beteiligtenverwaltung für wiederkehrende Meldungen
+* Meldungsübersicht für meldefähige und bereits gemeldete Inhalte
+* Erstellung und Versand von Meldungen direkt aus WordPress
 
-= Direkte und sichere Kommunikation mit T.O.M. =
-Wir legen einen großen Wert auf Sicherheit. Die Authentifizierung erfolgt über einen API-Key, der im [T.O.M. Portal](https://tom.vgwort.de/portal/index) (im Bereich METIS) generiert werden kann. Der API-Key ist in Ihrem Interesse unbedingt geheim zu halten und nicht an Dritte weiterzugeben. Sie können sicherheitshalber jederzeit einen neuen API-Key generieren, der alte wird damit sofort ungültig.
+= Funktionsumfang im Detail =
 
-= Automatische Bestellung von Zählmarken =
-Vor jeder automatischen Zuweisung von Zählmarken zu einem Beitrag oder einer Seite wird geprüft, ob genügend Zählmarken vorhanden sind. Beim Erreichen eines gewissen Schwellenwerts werden automatisch Zählmarken nachbestellt. Sie müssen sich also nie mehr darum kümmern, die Zählmarken vorher im T.O.M. Portal zu bestellen, das Plugin übernimmt diese Arbeit für Sie!
+= Direkte Verbindung mit T.O.M. =
 
-= Manuelle Bestellung von Zählmarken =
-Neben der automatischen Bestellung bieten wir auch die Möglichkeit, Zählmarken manuell zu bestellen. Per Mausklick können somit zusätzliche Zählmarken schnell und einfach zur Verfügung gestellt werden. 
+Die Authentifizierung erfolgt über einen API-Key, den Sie im [T.O.M. Portal](https://tom.vgwort.de/portal/index) im Bereich METIS generieren können. Bewahren Sie den API-Key sicher auf und geben Sie ihn nicht an Dritte weiter. Bei Bedarf können Sie jederzeit einen neuen API-Key erzeugen; der bisherige Schlüssel wird dadurch ungültig.
 
-= Import von Zählmarken aus T.O.M. =
-In den Einstellungen können aus T.O.M. exportierte Zählmarken über eine CSV-Datei in das Plugin importiert werden.
+= Zählmarken automatisch bestellen =
 
-= Scan-Funktion zum Zuweisen von eingebauten Zählmarken im HTML-Quelltext =
-Falls Sie vorhin andere WordPress-Plugins wie Prosodia und Worthy verwendet haben, lassen sich bereits eingebaute Zählmarken im HTML-Quelltext über die Scan-Funktion mit dem betreffenden Eintrag verknüpfen. Die Zuweisungen der eingebauten Zählmarken zu den einzelnen Beiträgen und Seiten werden daraufhin im Plugin korrekt ausgewiesen.
+Vor der automatischen Zuweisung prüft VG WORT METIS, ob ausreichend freie Zählmarken vorhanden sind. Wird ein definierter Schwellenwert erreicht, bestellt das Plugin automatisch neue Zählmarken nach.
 
-= Zuweisung von Zählmarken bei der Erstellung von Beiträgen und Seiten =
-Bei der Erstellung eines Beitrags oder einer Seite können Sie selbst wählen, ob sie diesem Eintrag automatisch eine frei verfügbare Zählmarke zuweisen möchten oder nicht.
+= Zählmarken manuell bestellen =
 
-= Zuweisung von Zählmarken beim Bearbeiten von Beiträgen und Seiten =
-Bei der nachträglichen Bearbeitung können Zählmarken ebenfalls zugewiesen und wieder entfernt werden. Zudem gibt es die Möglichkeit, eine bestimmte Zählmarke manuell zuzuweisen, um somit etwa einem Übersetzungstext dieselbe Zählmarke zuzuordnen.
+Zusätzlich zur automatischen Bestellung können Sie jederzeit manuell weitere Zählmarken anfordern und anschließend in WordPress verwenden.
 
-= Zählmarkenübersicht =
-Die Zählmarkenübersicht zeigt die Details zu allen zugewiesenen und nicht zugewiesenen Zählmarken an. Sie können hier auf einen Blick sehen, welche zugehörigen Texte den erforderlichen Mindestzugriff erreicht haben.
+= Zählmarken importieren =
 
-= Informationen zu Zählmarken in der Beitrags- und Seitenübersicht =
-Die Übersichtsseiten bieten zusätzliche Details zu den Einträgen, wie etwa die Anzahl der Zeichen und die Art des Textes. Zusätzlich können von hier aus Zählmarken über die Mehrfachaktionen zugewiesen und entfernt werden.
+Bereits in T.O.M. vorhandene Zählmarken lassen sich über eine CSV-Datei in das Plugin importieren. Der Import wird direkt in den Plugin-Einstellungen durchgeführt.
 
-= Beteiligtenverwaltung =
-In der Beteiligtenverwaltung können neue Beteiligte angelegt werden, die im Zuge der Meldungserstellung zur Auswahl stehen sollen und häufig verwendet werden. Auch angelegte WordPress-Benutzer (mit Ausnahme jener der Rolle "Abonnent") werden automatisch in die Beteiligtenverwaltung aufgenommen.
+= Vorhandene Zählmarken erkennen =
 
-= Meldungsübersicht =
-Die Meldungsübersicht gibt einen Überblick über meldefähige und bereits gemeldete Beiträge und Seiten. Von hier aus kann direkt eine Meldung erstellt werden.
+Wenn in Ihren Beiträgen oder Seiten bereits Zählmarken eingebunden sind, kann die Scan-Funktion diese im HTML-Quelltext erkennen und den passenden Inhalten zuordnen. Das ist besonders hilfreich beim Wechsel von anderen Plugins wie Prosodia oder Worthy.
 
-= Meldungserstellung =
-Beim Erstellen der Meldung müssen lediglich die Beteiligten ausgewählt oder manuell hinzugefügt werden. Das Anlegen von häufig benutzten Beteiligten kann in der Beteiligtenverwaltung vorgenommen werden, diese stehen dann bei der Meldungserstellung zur Auswahl. Falls Sie auch die optionalen Zusatzfunktionen in T.O.M. aktiviert haben, können Sie auch Texte melden, an denen Sie selbst nicht beteiligt sind.
+= Zählmarken zuweisen =
+
+Bei neuen Beiträgen und Seiten können Sie festlegen, ob automatisch eine freie Zählmarke zugewiesen werden soll. Auch beim nachträglichen Bearbeiten lassen sich Zählmarken hinzufügen, entfernen oder manuell zuweisen, zum Beispiel wenn ein Übersetzungstext dieselbe Zählmarke nutzen soll.
+
+= Zählmarken im Blick behalten =
+
+Die Zählmarkenübersicht zeigt zugewiesene und nicht zugewiesene Zählmarken inklusive Statusinformationen. Dort erkennen Sie unter anderem, welche Texte den erforderlichen Mindestzugriff erreicht haben.
+
+= Beitrags- und Seitenübersichten erweitern =
+
+VG WORT METIS ergänzt die WordPress-Übersichten um relevante Informationen, zum Beispiel Zeichenzahl und Textart. Über Mehrfachaktionen können Zählmarken direkt zugewiesen oder entfernt werden.
+
+= Beteiligte verwalten =
+
+In der Beteiligtenverwaltung können häufig verwendete Beteiligte gepflegt werden. Außerdem werden WordPress-Benutzerinnen und -Benutzer automatisch aufgenommen, sofern sie nicht die Rolle "Abonnent" haben.
+
+= Meldungen erstellen =
+
+Die Meldungsübersicht zeigt meldefähige und bereits gemeldete Beiträge und Seiten. Beim Erstellen einer Meldung wählen Sie die Beteiligten aus oder fügen sie manuell hinzu. Wenn die optionalen Zusatzfunktionen in T.O.M. aktiviert sind, können auch Texte gemeldet werden, an denen Sie selbst nicht beteiligt sind.
+
+= Hilfe und Anleitung =
+
+Eine Kurzanleitung sowie weitere Informationen zur Funktionsweise finden Sie direkt im Dashboard des Plugins.
 
 == Frequently Asked Questions ==
-= Wie unterscheidet sich VG WORT METIS im Vergleich zu anderen Plugins? =
-Wir bieten Ihnen mit VG WORT METIS ein Plugin, das seitens der VG WORT offiziell unterstützt wird. Die direkte und sichere Kommunikation mit dem Portal T.O.M. ist das, was unser Plugin ausmacht.
 
-= Sind mit der Nutzung des Plugins etwaige Kosten verbunden? =
-Das Plugin steht jedem Nutzer völlig kostenfrei zur Verfügung, inkl. aller seiner Funktionen und Inhalte.
+= Wie unterscheidet sich VG WORT METIS von anderen Plugins? =
 
-= Ich kann keine Zählmarken zu Beiträgen und Seiten zuweisen, woran liegt das? =
-Damit Sie dieses Plugin nutzen können, ist eine Authentifizierung über einen API-Key erforderlich. Diesen können Sie sich im [T.O.M. Portal](https://tom.vgwort.de/portal/index) unter dem Bereich METIS generieren lassen. Bitte halten Sie den API-Key unbedingt geheim und geben Sie diesen nicht an Dritte weiter. 
+VG WORT METIS ist das offiziell unterstützte WordPress-Plugin der VG WORT. Der zentrale Unterschied ist die direkte und sichere Kommunikation mit dem T.O.M. Portal.
 
-= Bei der Scan-Funktion kommt es zu einem Timeout, was kann ich in diesem Fall tun? =
-Je nach Anzahl der Einträge, der verwendeten Themes und Plugins kann es vereinzelt zu einem Timeout bei der Überprüfung des Quelltexts kommen. Ab Version 2.0.0 wurde die automatische Zählmarkenzuweisung so angepasst, dass ähnlich der Scan-Funktion nun auch Zählmarken im Quelltext berücksichtigt werden. In diesem Fall können Sie als Alternative auf die Mehrfachaktionen auf der Beitrags- und Seitenübersicht zurückgreifen, dort die gewünschten Beiträge oder Seiten auswählen und die Zuweisung (schrittweise) vornehmen. Ansonsten ist die Zuweisung der richtigen Zählmarke auch über die manuelle Zuweisung möglich.
+= Ist die Nutzung des Plugins kostenpflichtig? =
 
-= Ich habe einen Fehler gefunden oder hätte einen Verbesserungsvorschlag, an wem soll ich mich wenden? =
-Bei Fehlern, Verbesserungsvorschlägen und sonstigen Anregungen können Sie sich an den Support ([metis.support@vgwort.de](metis.support@vgwort.de)) wenden. Bitte geben Sie im Falle eines Fehlers auch die verwendete PHP-Version und die WordPress-Version an. Die VG WORT freut sich über reges Feedback!
+Nein. Das Plugin steht kostenfrei zur Verfügung, inklusive aller Funktionen und Inhalte.
+
+= Warum kann ich keine Zählmarken zu Beiträgen oder Seiten zuweisen? =
+
+Für die Nutzung ist eine Authentifizierung über einen API-Key erforderlich. Den API-Key können Sie im [T.O.M. Portal](https://tom.vgwort.de/portal/index) im Bereich METIS generieren. Bitte halten Sie den Schlüssel geheim und geben Sie ihn nicht an Dritte weiter.
+
+= Bei der Scan-Funktion kommt es zu einem Timeout. Was kann ich tun? =
+
+Je nach Anzahl der Inhalte sowie eingesetztem Theme und Plugins kann die Überprüfung des Quelltexts vereinzelt zu lange dauern. Seit Version 2.0.0 berücksichtigt die automatische Zählmarkenzuweisung ebenfalls Zählmarken im Quelltext. Nutzen Sie in diesem Fall alternativ die Mehrfachaktionen in der Beitrags- und Seitenübersicht und weisen Sie Zählmarken schrittweise zu. Außerdem ist die manuelle Zuweisung einer bestimmten Zählmarke möglich.
+
+= Ich habe einen Fehler gefunden oder einen Verbesserungsvorschlag. Wohin kann ich mich wenden? =
+
+Bitte wenden Sie sich an den Support unter [metis.support@vgwort.de](mailto:metis.support@vgwort.de). Geben Sie bei Fehlerberichten nach Möglichkeit auch Ihre PHP-Version und WordPress-Version an.
 
 == Screenshots ==
+
 1. Plugin-Einstellungen
 2. Zählmarkenübersicht
 3. Informationen zu Zählmarken in der Seitenübersicht
-4. Zuweisung von Zählmarken bei der Erstellung von neuen Seiten 
-5. Zuweisung von Zählmarken bei der nachträglichen Bearbeitung von Seiten
+4. Zuweisung von Zählmarken bei der Erstellung neuer Seiten
+5. Zuweisung von Zählmarken beim nachträglichen Bearbeiten von Seiten
 6. Beteiligtenverwaltung
 7. Meldungsübersicht
 8. Meldungserstellung
 
 == Changelog ==
-= 1.0.0 =
-* Erstversion
-= 1.0.1 =
+
+= 2.1.0 =
+* Import von Zählmarken aus Prosodia VGW OS per CSV-Datei
+* Verbesserte Scan-Funktion zur Erkennung und Zuordnung von Prosodia-Zählmarken
+* Filter für Zählmarken-Zuordnungen in Beitrags- und Seitenübersichten
+* Sortierbare Spalten in der Zählmarken- und Meldungsübersicht
+* Erweiterte Nonce-, Rollen- und Berechtigungsprüfungen für Admin- und AJAX-Aktionen
+* Verbesserte Absicherung von Ausgaben und Behebung von CVE-2025-50039
+* Korrektur der Cron-Planung für den täglichen Zählmarkenabgleich
+* Admin-CSS wird nur noch im Backend geladen
+* Zählpixel werden gegen Lazy Loading geschützt
 * Allgemeine Verbesserungen und Fehlerbehebungen
-= 1.1.0 =
-* Meldungsübersicht
-* Erstellung und Absenden von Meldungen
-= 1.1.1 =
-* Kurzanleitung sowie Erklärungstexte am Dashboard
-* Behebung der Weiterleitung auf eine leere Seite bei fehlerhaftem CSV-Import
-* Behebung des Überschreibens von bereits vorhandenen Mehrfachaktionen
-* Behebung fehlerhaftes Verhalten beim Ändern von Beteiligten in der Beteiligtenverwaltung
-* Sonstige Verbesserungen
-= 1.2.0 =
-* Allgemeine Verbesserungen und Fehlerbehebungen
-= 2.0.0 =
-* Unterstützung Gutenberg-Editor
-* Verbesserung Scan-Funktion und automatische Zählmarkenzuweisung
-* Neuer Status für mehrfach zugewiesene Zählmarken
-* Manuelles Hinzufügen von Beteiligten bei der Meldungserstellung
-* Unterstützung von optionalen Zusatzfunktionen bei der Meldungserstellung
-* Entfernung Hinweismeldung bei vorhandenen WordPress-Benutzern ohne Nachnamen
-* Allgemeine Verbesserungen und Fehlerbehebungen
+
 = 2.0.1 =
 * Allgemeine Verbesserungen und Fehlerbehebungen
 * Security-Fixes
+
+= 2.0.0 =
+* Unterstützung des Gutenberg-Editors
+* Verbesserung der Scan-Funktion und der automatischen Zählmarkenzuweisung
+* Neuer Status für mehrfach zugewiesene Zählmarken
+* Manuelles Hinzufügen von Beteiligten bei der Meldungserstellung
+* Unterstützung optionaler Zusatzfunktionen bei der Meldungserstellung
+* Entfernung der Hinweismeldung bei vorhandenen WordPress-Benutzern ohne Nachnamen
+* Allgemeine Verbesserungen und Fehlerbehebungen
+
+= 1.2.0 =
+* Allgemeine Verbesserungen und Fehlerbehebungen
+
+= 1.1.1 =
+* Kurzanleitung sowie Erklärungstexte im Dashboard
+* Behebung der Weiterleitung auf eine leere Seite bei fehlerhaftem CSV-Import
+* Behebung des Überschreibens von bereits vorhandenen Mehrfachaktionen
+* Behebung fehlerhaften Verhaltens beim Ändern von Beteiligten in der Beteiligtenverwaltung
+* Sonstige Verbesserungen
+
+= 1.1.0 =
+* Meldungsübersicht
+* Erstellung und Absenden von Meldungen
+
+= 1.0.1 =
+* Allgemeine Verbesserungen und Fehlerbehebungen
+
+= 1.0.0 =
+* Erstversion
