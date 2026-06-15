@@ -171,12 +171,15 @@
 
             if (data.code === 'multiple-assignment') {
                 alert(VGWMetisAjax.messages.multiple_assignment);
-                alert(fallbackMessage || VGWMetisAjax.messages.success);
+                return;
+            }
+
+            if (isSuccess) {
                 return;
             }
 
             const codeMessage = data.code ? codeMessages[data.code] : '';
-            const message = codeMessage || fallbackMessage || data.message || (isSuccess ? '' : VGWMetisAjax.messages.error_general);
+            const message = codeMessage || fallbackMessage || data.message || VGWMetisAjax.messages.error_general;
 
             if (message) {
                 alert(message);

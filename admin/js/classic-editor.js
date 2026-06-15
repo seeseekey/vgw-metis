@@ -80,12 +80,15 @@
 
             if (data.code === 'multiple-assignment') {
                 alert(wp_metis_metabox_obj.multiple_assignment);
-                alert(fallbackMessage || wp_metis_metabox_obj.success);
+                return;
+            }
+
+            if (isSuccess) {
                 return;
             }
 
             const codeMessage = data.code ? codeMessages[data.code] : '';
-            const message = codeMessage || fallbackMessage || data.message || (isSuccess ? '' : wp_metis_metabox_obj.error_general);
+            const message = codeMessage || fallbackMessage || data.message || wp_metis_metabox_obj.error_general;
 
             if (message) {
                 alert(message);
