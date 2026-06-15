@@ -118,6 +118,8 @@ Bitte wenden Sie sich an den Support unter [metis.support@vgwort.de](mailto:meti
 = 2.1.0 =
 * Import von Zählmarken aus Prosodia VGW OS per CSV-Datei
 * Verbesserte Scan-Funktion zur Erkennung und Zuordnung von Prosodia-Zählmarken
+* Zuweisung, Entfernung und manuelle Zuordnung von Zählmarken im Artikel-Editor erfolgen nun per AJAX ohne Neuladen der Seite
+* Verbesserte Aktualisierung der Zählmarken-Anzeige in Gutenberg und Classic Editor nach einer Zuordnung
 * Filter für Zählmarken-Zuordnungen in Beitrags- und Seitenübersichten
 * Sortierbare Spalten in der Zählmarken- und Meldungsübersicht
 * Erweiterte Nonce-, Rollen- und Berechtigungsprüfungen für Admin- und AJAX-Aktionen
