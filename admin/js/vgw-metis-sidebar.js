@@ -11,55 +11,65 @@
 (function ($, wp) {
     const { registerPlugin } = wp.plugins;
     const { PluginDocumentSettingPanel } = wp.editor;
-    const { createElement: el, useState, useEffect } = wp.element;
+    const { createElement: el, useState, useEffect, useRef } = wp.element;
     const { TextControl, RadioControl, Button } = wp.components;
     const { __ } = wp.i18n;
     const { useSelect, useDispatch } = wp.data;
 
-    var autoAssignPixel = 'false';
-
-    function isNewPost() {
-        const postStatus = useSelect((select) => select('core/editor').getEditedPostAttribute('status'));
-        return postStatus === 'auto-draft';
-    }
-
     function VGWMetisDocumentSettings() {
+        const {
+            postId,
+            meta,
+            post,
+            postStatus,
+            isSavingPost,
+            isAutosavingPost,
+            isEditedPostDirty
+        } = useSelect((select) => {
+            const editor = select('core/editor');
 
-        var isNew = isNewPost();
-        const { editPost } = useDispatch('core/editor');
-        const postId = wp.data.useSelect(select => select('core/editor').getCurrentPostId());
-        const meta = useSelect(select => select('core/editor').getEditedPostAttribute('meta'), []);
-
-        // Get the current post object
-        const post = useSelect( ( select ) => select( 'core/editor' ).getCurrentPost(), [] );
+            return {
+                postId: editor.getCurrentPostId(),
+                meta: editor.getEditedPostAttribute('meta') || {},
+                post: editor.getCurrentPost() || {},
+                postStatus: editor.getEditedPostAttribute('status'),
+                isSavingPost: editor.isSavingPost(),
+                isAutosavingPost: editor.isAutosavingPost(),
+                isEditedPostDirty: editor.isEditedPostDirty ? editor.isEditedPostDirty() : false
+            };
+        }, []);
+        const { editPost, savePost } = useDispatch('core/editor');
+        const isNew = postStatus === 'auto-draft';
+        const initialPublicId = post.public_identification_id || VGWMetisAjax.publicIdentificationId || '';
+        const initialPrivateId = post.private_identification_id || VGWMetisAjax.privateIdentificationId || '';
 
         const [pixelAutoInsertForPost, setPixelAutoInsertForPost] = useState(meta.vgw_metis_counter_auto_insert || 'true');
-        const [currentPublicPixelId, setCurrentPublicPixelId] = useState( post.public_identification_id || '' );
-        const [assignedPostsCount, setAssignedPostsCount] = useState( 0 );
-        const [publicPixelId, setPublicPixelId] = useState( post.public_identification_id || '' );
-        const [privatePixelId, setPrivatePixelId] = useState( post.private_identification_id || '' );
-
-        let charCount = meta._metis_text_length;
-        
-        const { isSavingPost, isAutosavingPost } = useSelect((select) => ({
-            isSavingPost: select('core/editor').isSavingPost(),
-            isAutosavingPost: select('core/editor').isAutosavingPost(),
-        }));
-
-        useEffect(() => {
-            if (isSavingPost && !isAutosavingPost) {
-                // This effect will run when the post is being saved (but not autosaved)
-                if(pixelAutoInsertForPost === 'true') {
-                    assignPixelToPost(postId);
-                    setPixelAutoInsertForPost('false');
-                    post.private_identification_id = privatePixelId;
-                    post.public_identification_id = publicPixelId;
-                }
-            }
-        }, [isSavingPost, isAutosavingPost]);
-
+        const [currentPublicPixelId, setCurrentPublicPixelId] = useState(initialPublicId);
+        const [assignedPostsCount, setAssignedPostsCount] = useState(0);
+        const [publicPixelId, setPublicPixelId] = useState(initialPublicId);
+        const [privatePixelId, setPrivatePixelId] = useState(initialPrivateId);
+        const [textLength, setTextLength] = useState(meta._metis_text_length || '');
         const [isManualPixelInserted, setManualPixelInserted] = useState(false);
-        
+        const [isBusy, setBusy] = useState(false);
+        const pendingAutoAssignAfterSave = useRef(false);
+
+        const codeMessages = {
+            'invalid-format': VGWMetisAjax.messages.invalid_format,
+            'removal-failed': VGWMetisAjax.messages.removal_failed,
+            'invalid-request': VGWMetisAjax.messages.invalid_request,
+            'open-id-required': VGWMetisAjax.messages.open_id_required,
+            'already-assigned': VGWMetisAjax.messages.already_assigned,
+            'assign-failed': VGWMetisAjax.messages.assign_failed,
+            'error-has-same-post-id': VGWMetisAjax.messages.error_has_same_post_id,
+            'error-assign-to-post-failed': VGWMetisAjax.messages.error_assign_to_post_failed,
+            'error-remove-pixel-from-post': VGWMetisAjax.messages.error_remove_pixel_from_post,
+            'error-new-pixel-is-disabled': VGWMetisAjax.messages.error_new_pixel_is_disabled,
+            'error-disable-pixel': VGWMetisAjax.messages.error_disable_pixel,
+            'error-inserting-pixel': VGWMetisAjax.messages.error_inserting_pixel,
+            'multiple-assignment': VGWMetisAjax.messages.multiple_assignment,
+            'remove-failed': VGWMetisAjax.messages.error_remove_pixel_from_post
+        };
+
         const updateMetaField = (field, value) => {
             editPost({
                 meta: {
@@ -67,121 +77,183 @@
                 }
             });
         };
-        
-        // Using useEffect to manage the setting of pixelAutoInsertForPost
-        useEffect(() => {
 
-            // Check if the body has the post-type-post class
+        useEffect(() => {
+            if (post.public_identification_id && post.public_identification_id !== publicPixelId) {
+                setPublicPixelId(post.public_identification_id);
+                setCurrentPublicPixelId(post.public_identification_id);
+            }
+
+            if (post.private_identification_id && post.private_identification_id !== privatePixelId) {
+                setPrivatePixelId(post.private_identification_id);
+            }
+        }, [post.public_identification_id, post.private_identification_id]);
+
+        useEffect(() => {
+            if (typeof meta._metis_text_length !== 'undefined' && meta._metis_text_length !== textLength) {
+                setTextLength(meta._metis_text_length);
+            }
+        }, [meta._metis_text_length]);
+
+        useEffect(() => {
             if (jQuery('body').hasClass('post-type-post')) {
                 setPixelAutoInsertForPost(VGWMetisAjax.autoAddPosts === 'no' ? 'false' : 'true');
-            } 
-            // Check if the body has the post-type-page class
-            else if (jQuery('body').hasClass('post-type-page')) {
+            } else if (jQuery('body').hasClass('post-type-page')) {
                 setPixelAutoInsertForPost(VGWMetisAjax.autoAddPages === 'no' ? 'false' : 'true');
             }
 
-            if(publicPixelId && postId)
-                getPostsCount(publicPixelId, postId);
+            if (initialPublicId && postId) {
+                getPostsCount(initialPublicId, postId);
+            }
+        }, []);
 
-        }, []); // Empty dependency array ensures this only runs once, when the component mounts
-        
-        // check if we already have a pixel and show disable message
-        // yes > confirm to assign new one and disable old one
-        // no  > assign new pixel
+        useEffect(() => {
+            if (isNew && pixelAutoInsertForPost === 'true' && isSavingPost && !isAutosavingPost) {
+                pendingAutoAssignAfterSave.current = true;
+            }
+        }, [isNew, pixelAutoInsertForPost, isSavingPost, isAutosavingPost]);
+
+        useEffect(() => {
+            if (!pendingAutoAssignAfterSave.current || isSavingPost || isAutosavingPost || !postId) {
+                return;
+            }
+
+            pendingAutoAssignAfterSave.current = false;
+            assignPixelToPost(postId, { saveFirst: false, successMessage: VGWMetisAjax.messages.assign_success }).then(function () {
+                setPixelAutoInsertForPost('false');
+            });
+        }, [isSavingPost, isAutosavingPost, postId]);
+
+        function ajaxPost(data) {
+            return new Promise(function (resolve, reject) {
+                $.ajax({
+                    url: VGWMetisAjax.ajax_url,
+                    type: 'POST',
+                    dataType: 'json',
+                    data: data
+                }).done(resolve).fail(reject);
+            });
+        }
+
+        async function saveEditedPostIfDirty() {
+            if (!isEditedPostDirty || isSavingPost) {
+                return true;
+            }
+
+            try {
+                await savePost();
+                return true;
+            } catch (error) {
+                alert(VGWMetisAjax.messages.save_error || VGWMetisAjax.messages.error_general);
+                return false;
+            }
+        }
+
+        function applyPixelResponse(data) {
+            const publicId = data && data.public_identification_id ? data.public_identification_id : '';
+            const privateId = data && data.private_identification_id ? data.private_identification_id : '';
+
+            setPublicPixelId(publicId);
+            setCurrentPublicPixelId(publicId || '-');
+            setPrivatePixelId(privateId);
+            setAssignedPostsCount(data && typeof data.posts_count !== 'undefined' ? parseInt(data.posts_count, 10) || 0 : 0);
+
+            if (data && typeof data.text_length !== 'undefined') {
+                setTextLength(data.text_length);
+            }
+        }
+
+        function showResponseMessage(data, fallbackMessage, isSuccess) {
+            if (!data) {
+                alert(VGWMetisAjax.messages.error_general);
+                return;
+            }
+
+            if (data.code === 'multiple-assignment') {
+                alert(VGWMetisAjax.messages.multiple_assignment);
+                alert(fallbackMessage || VGWMetisAjax.messages.success);
+                return;
+            }
+
+            const codeMessage = data.code ? codeMessages[data.code] : '';
+            const message = codeMessage || fallbackMessage || data.message || (isSuccess ? '' : VGWMetisAjax.messages.error_general);
+
+            if (message) {
+                alert(message);
+            }
+        }
+
+        function showAjaxError(xhr) {
+            const data = xhr && xhr.responseJSON && xhr.responseJSON.data ? xhr.responseJSON.data : null;
+            showResponseMessage(data, null, false);
+        }
+
+        async function postPixelAction(requestData, options) {
+            const settings = options || {};
+
+            if (settings.saveFirst) {
+                const saved = await saveEditedPostIfDirty();
+                if (!saved) {
+                    return null;
+                }
+            }
+
+            setBusy(true);
+
+            try {
+                const response = await ajaxPost(requestData);
+                const data = response && response.data ? response.data : null;
+
+                if (response && response.success && data) {
+                    applyPixelResponse(data);
+                    showResponseMessage(data, settings.successMessage, true);
+                    return data;
+                }
+
+                showResponseMessage(data, null, false);
+                return null;
+            } catch (xhr) {
+                showAjaxError(xhr);
+                return null;
+            } finally {
+                setBusy(false);
+            }
+        }
+
         function step_has_previous_pixel(current_pid, new_pid, post_id, posts_count, nonce) {
             if (current_pid && current_pid !== '-') {
-                if(posts_count < 2) {
+                if (posts_count < 2) {
                     const sure = confirm(VGWMetisAjax.messages.confirm_disable_message);
-                    // exit if answer is no
                     if (!sure) {
                         return;
                     }
                 }
             }
-            // finally add the new pixel
+
             step_add_manual_pixel(new_pid, post_id, nonce);
         }
 
-        // add the manual pixel or display various error messages
         function step_add_manual_pixel(new_pid, post_id, nonce) {
-            // wp ajax call to assign pixel
-            $.post(VGWMetisAjax.ajax_url, {
-                    action: 'manually_assign_pixel_to_post',
-                    post_id: post_id,
-                    public_identification_id: new_pid,
-                    nonce: nonce
-                }, function (data) {
-                    // handle response data, show success or error messages
-                    const code = data && data.data ? data.data.code : null;
-                    if (code) {
-                        switch (code) {
-                            case 'invalid-format':
-                                alert(VGWMetisAjax.messages.invalid_format);
-                                break;
-                            case 'removal-failed':
-                                alert(VGWMetisAjax.messages.removal_failed);
-                                break;
-                            case 'invalid-request':
-                                alert(VGWMetisAjax.messages.invalid_request);
-                                break;
-                            case 'open-id-required':
-                                alert(VGWMetisAjax.messages.open_id_required);
-                                break;
-                            case 'already-assigned':
-                                alert(VGWMetisAjax.messages.already_assigned);
-                                break;
-                            case 'assign-failed':
-                                alert(VGWMetisAjax.messages.assign_failed);
-                                break;
-                            case 'error-has-same-post-id':
-                                alert(VGWMetisAjax.messages.error_has_same_post_id);
-                                break;
-                            case 'error-assign-to-post-failed':
-                                alert(VGWMetisAjax.messages.error_assign_to_post_failed);
-                                break;
-                            case 'error-remove-pixel-from-post':
-                                alert(VGWMetisAjax.messages.error_remove_pixel_from_post);
-                                break;
-                            case 'error-new-pixel-is-disabled':
-                                alert(VGWMetisAjax.messages.error_new_pixel_is_disabled);
-                                break;
-                            case 'error-disable-pixel':
-                                alert(VGWMetisAjax.messages.error_disable_pixel);
-                                break;
-                            case 'error-inserting-pixel':
-                                alert(VGWMetisAjax.messages.error_inserting_pixel);
-                                break;
-                            case 'multiple-assignment':
-                                alert(VGWMetisAjax.messages.multiple_assignment);
-                                alert(VGWMetisAjax.messages.success);
-                                setCurrentPublicPixelId(new_pid);
-                                if(new_pid != null && post_id)
-                                    getPostsCount(new_pid, post_id);
-                                document.getElementById('publish').click();
-                                break;
-                            case 'success':
-                                alert(VGWMetisAjax.messages.success);
-                                setCurrentPublicPixelId(new_pid);
-                                if(new_pid != null && post_id)
-                                    getPostsCount(new_pid, post_id);
-                                document.getElementById('publish').click();
-                                break;
-                            default:
-                                alert(VGWMetisAjax.messages.error_general);
-                                break;
-                        }
-                    } else {
-                        alert(VGWMetisAjax.messages.error_general);
-                        return;
-                    }
+            postPixelAction({
+                action: 'manually_assign_pixel_to_post',
+                post_id: post_id,
+                public_identification_id: new_pid,
+                nonce: nonce
+            }, {
+                saveFirst: true,
+                successMessage: VGWMetisAjax.messages.success
+            }).then(function (data) {
+                if (data && data.assigned) {
+                    setManualPixelInserted(false);
                 }
-            );
+            });
         }
 
         const getPostsCount = (publicIdentificationId, postId) => {
             $.ajax({
                 url: VGWMetisAjax.ajax_url,
                 type: 'POST',
+                dataType: 'json',
                 data: {
                     action: 'get_posts_count',
                     post_id: postId,
@@ -191,132 +263,78 @@
                 success: function (response) {
                     if (response.success) {
                         setAssignedPostsCount(response.data.posts_count);
-                    } else {
+                    } else if (response.data && response.data.message) {
                         alert(response.data.message);
                     }
-                    if(response.data && response.data.message)
-                        alert(response.data.message);
                 },
-                error: function (xhr, status, error) {
-                    console.log('AJAX Error:', error);
+                error: function () {
+                    alert(VGWMetisAjax.messages.error_get_posts_count);
                 }
             });
         };
 
-        const assignPixelToPost = (postId) => {
-            $.ajax({
-                url: VGWMetisAjax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'assign_pixel_to_post',
-                    post_id: postId,
-                    security: VGWMetisAjax.nonce
-                },
-                success: function (response) {
-                    if (response.success) {
-                        if (response.data.public_identification_id) {
-                            if(response.data.private_identification_id)
-                                setPrivatePixelId(response.data.private_identification_id);
-                            setPublicPixelId(response.data.public_identification_id);
-                        } else {
-                            console.log('Error:', 'Identification ids are missing');
-                        }
-                    }
-                    if(response.data && response.data.message)
-                        alert(response.data.message);
-                },
-                error: function (xhr, status, error) {
-                    console.log('AJAX Error:', error);
-                }
+        const assignPixelToPost = (postId, options) => {
+            return postPixelAction({
+                action: 'assign_pixel_to_post',
+                post_id: postId,
+                wp_metis_metabox_text_type: meta._metis_text_type || 'standard',
+                security: VGWMetisAjax.nonce
+            }, {
+                saveFirst: options && typeof options.saveFirst !== 'undefined' ? options.saveFirst : true,
+                successMessage: options && options.successMessage ? options.successMessage : VGWMetisAjax.messages.assign_success
             });
         };
 
         const removePixelFromPost = (postId) => {
-            $.ajax({
-                url: VGWMetisAjax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'remove_pixel_from_post',
-                    post_id: postId,
-                    security: VGWMetisAjax.nonce
-	                },
-	                success: function (response) {
-	                    const message = response.data && response.data.message ? response.data.message : null;
-	                    if (response.success) {
-	                        setPrivatePixelId(null);
-	                        setPublicPixelId(null);
-	                        if (message) {
-	                            alert(message);
-	                        }
-	                    } else {
-	                        console.log('Error:', message);
-	                        if (message) {
-	                            alert(message);
-	                        }
-	                    }
-	                },
-                error: function (xhr, status, error) {
-                    console.log('AJAX Error:', error);
-                    alert(error);
-                }
+            return postPixelAction({
+                action: 'remove_pixel_from_post',
+                post_id: postId,
+                security: VGWMetisAjax.nonce
+            }, {
+                saveFirst: false,
+                successMessage: VGWMetisAjax.messages.remove_success
             });
         };
 
         const checkValidityAndOwnership = (postId, publicPixelId) => {
-
-            const current_public_identification_id = $('#manual-pixel-assignment-button').data('current-public-identification-id');
-            const posts_count = $('#manual-pixel-assignment-button').data('posts-count');
-
-            // wp ajax call to assign pixel
             $.post(VGWMetisAjax.ajax_url, {
                 action: 'check_validity_and_ownership',
                 post_id: postId,
                 public_identification_id: publicPixelId,
                 nonce: VGWMetisAjax.nonce
-                }, function (data) {
-                    // handle response
-                    if (data) {
-                        switch (data) {
-                            // pixel is valid, check if post has a previous pixel
-                            case VGWMetisAjax.messages.status_valid:
-                                step_has_previous_pixel(current_public_identification_id, publicPixelId, postId, posts_count, VGWMetisAjax.nonce);
-                                break;
-                            // pixel not valid, show message and return
-                            case VGWMetisAjax.messages.status_not_valid:
-                                alert(VGWMetisAjax.messages.status_not_valid_message);
-                                break;
-                            // pixel not found, show message and return
-                            case VGWMetisAjax.messages.status_not_found:
-                                alert(VGWMetisAjax.messages.status_not_found_message);
-                                break;
-                            // no pixel ownership, confirm if we really want to add the pixel, if yes, check if post has previous pixel
-                            case VGWMetisAjax.messages.status_not_owner:
-                                const answer = confirm(VGWMetisAjax.messages.not_own_pixel_confirmation);
-                                if (answer) {
-                                    step_has_previous_pixel(current_public_identification_id, publicPixelId, postId, posts_count, VGWMetisAjax.nonce);
-                                }
-                                break;
-                            // error, show message and return
-                            case 'error-is-valid-and-ownership':
-                                alert(VGWMetisAjax.messages.error_is_valid_and_ownership);
-                                break;
-                            // if none of the above, show a general error
-                            default:
-                                alert(VGWMetisAjax.messages.error_general);
-                                break;
-                        }
-                        // end this
-                        return;
-                    } else {
-                        alert(VGWMetisAjax.messages.error_general);
-                        return;
+            }, function (data) {
+                if (data) {
+                    switch (data) {
+                        case VGWMetisAjax.messages.status_valid:
+                            step_has_previous_pixel(currentPublicPixelId, publicPixelId, postId, assignedPostsCount, VGWMetisAjax.nonce);
+                            break;
+                        case VGWMetisAjax.messages.status_not_valid:
+                            alert(VGWMetisAjax.messages.status_not_valid_message);
+                            break;
+                        case VGWMetisAjax.messages.status_not_found:
+                            alert(VGWMetisAjax.messages.status_not_found_message);
+                            break;
+                        case VGWMetisAjax.messages.status_not_owner:
+                            const answer = confirm(VGWMetisAjax.messages.not_own_pixel_confirmation);
+                            if (answer) {
+                                step_has_previous_pixel(currentPublicPixelId, publicPixelId, postId, assignedPostsCount, VGWMetisAjax.nonce);
+                            }
+                            break;
+                        case 'error-is-valid-and-ownership':
+                            alert(VGWMetisAjax.messages.error_is_valid_and_ownership);
+                            break;
+                        default:
+                            alert(VGWMetisAjax.messages.error_general);
+                            break;
                     }
+                    return;
                 }
-            );
-        }
 
-
-
+                alert(VGWMetisAjax.messages.error_general);
+            }).fail(function () {
+                alert(VGWMetisAjax.messages.error_is_valid_and_ownership);
+            });
+        };
 
         return el(
             PluginDocumentSettingPanel, {
@@ -339,7 +357,6 @@
                 className: 'vgw-metis-radio-control'
             }),
 
-            // Art des Textes
             el(RadioControl, {
                 label: __('Art des Textes', 'text-domain'),
                 selected: meta._metis_text_type || 'standard',
@@ -351,10 +368,9 @@
                 className: 'vgw-metis-radio-control'
             }),
 
-            // Conditionally render "Öffentlicher Identifikationscode" field
             !isNew && isManualPixelInserted && el(TextControl, {
                 label: __('Öffentlicher Identifikationscode', 'text-domain'),
-                value: publicPixelId || __('', 'text-domain'),
+                value: publicPixelId || '',
                 onChange: value => {
                     setPublicPixelId(value);
                 }
@@ -366,7 +382,7 @@
             },
                 el('strong', { className: 'components-base-control__label' }, __('Öffentlicher Identifikationscode', 'text-domain').toUpperCase()),
                 el('br'),
-                el('span', null, publicPixelId || __('', 'text-domain'))
+                el('span', null, publicPixelId || '')
             ),
 
             !isNew && el('div', {
@@ -375,54 +391,53 @@
             },
                 el('strong', { className: 'components-base-control__label' }, __('Privater Identifikationscode', 'text-domain').toUpperCase()),
                 el('br'),
-                el('span', null, privatePixelId || __('', 'text-domain'))
+                el('span', null, privatePixelId || '')
             ),
 
-            // Zeichenanzahl
             !isNew && el('div', {
                 className: 'vgw_metis_number_of_chars-label',
                 style: { marginBottom: '10px' }
             },
                 el('strong', { className: 'components-base-control__label' }, __('Zeichenanzahl', 'text-domain').toUpperCase()),
                 el('br'),
-                el('span', null, charCount || __('', 'text-domain'))
+                el('span', null, textLength || '')
             ),
 
-            // Schaltfläche “Zählmarke zuweisen” bzw. “Zählmarke entfernen”
             !isManualPixelInserted && !isNew && el(Button, {
                 isPrimary: true,
+                disabled: isBusy || isSavingPost,
                 onClick: () => {
                     setManualPixelInserted(false);
-                    (publicPixelId == null || publicPixelId == "") ?
+                    (publicPixelId == null || publicPixelId === '') ?
                         assignPixelToPost(postId) :
                         removePixelFromPost(postId);
                 },
                 style: {
                     margin: '5px 0'
                 }
-            }, (publicPixelId != null && publicPixelId != "") ?
-                 __('Zählmarke entfernen', 'text-domain') :
-                 __('Zählmarke zuweisen', 'text-domain')),
+            }, (publicPixelId != null && publicPixelId !== '') ?
+                __('Zählmarke entfernen', 'text-domain') :
+                __('Zählmarke zuweisen', 'text-domain')),
 
-            // Schaltfläche “Zählmarke manuell zuweisen”
             !isNew && el(Button, {
                 isPrimary: true,
                 id: 'manual-pixel-assignment-button',
+                disabled: isBusy || isSavingPost,
                 'data-current-public-identification-id': currentPublicPixelId,
                 'data-posts-count': assignedPostsCount,
                 onClick: () => {
                     if (isManualPixelInserted) {
                         checkValidityAndOwnership(postId, publicPixelId);
+                        return;
                     }
-                    setManualPixelInserted(!isManualPixelInserted);
+
+                    setManualPixelInserted(true);
                 },
                 style: {
                     margin: '5px 0'
                 }
             }, !isManualPixelInserted ? __('Zählmarke manuell zuweisen', 'text-domain') : __('Manuelle Zählmarke speichern', 'text-domain')),
-
         );
-
     }
 
     registerPlugin('vgw-metis-document-settings', {

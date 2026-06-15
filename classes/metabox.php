@@ -129,24 +129,24 @@ class Metabox {
                 </p>
 			<?php endif; ?>
 
-			<?php if (! $isNew && $pixel && $pixel->active) : ?>
-                <p class="wp_metis_metabox_public_id">
+			<?php if (! $isNew) : ?>
+                <p class="wp_metis_metabox_public_id" <?php echo ( ! $pixel || ! $pixel->active ) ? 'style="display:none;"' : ''; ?>>
                     <label><?php esc_html_e('Öffentlicher Identifikationscode', 'vgw-metis') ?></label>
-					<?php esc_html_e($public_id); ?>
+                    <span id="wp_metis_metabox_public_id_value"><?php echo esc_html($public_id); ?></span>
                 </p>
 			<?php endif; ?>
 
-			<?php if (! $isNew && $pixel && $pixel->active) : ?>
-                <p class="wp_metis_metabox_private_id">
+			<?php if (! $isNew) : ?>
+                <p class="wp_metis_metabox_private_id" <?php echo ( ! $pixel || ! $pixel->active ) ? 'style="display:none;"' : ''; ?>>
                     <label><?php esc_html_e('Privater Identifikationscode', 'vgw-metis') ?></label>
-					<?php esc_html_e($private_id); ?>
+                    <span id="wp_metis_metabox_private_id_value"><?php echo esc_html($private_id); ?></span>
                 </p>
 			<?php endif; ?>
 
-			<?php if (! $isNew && $pixel && $pixel->active) : ?>
-                <p class="wp_metis_metabox_char_count">
+			<?php if (! $isNew) : ?>
+                <p class="wp_metis_metabox_char_count" <?php echo ( ! $pixel || ! $pixel->active ) ? 'style="display:none;"' : ''; ?>>
                     <label><?php esc_html_e('Zeichenanzahl', 'vgw-metis') ?></label>
-                    <span class="metis_char_count"><?php esc_html_e($text_length); ?>
+                    <span id="wp_metis_metabox_text_length_value" class="metis_char_count"><?php echo esc_html($text_length); ?></span>
                 </p>
 			<?php endif; ?>
 
@@ -160,28 +160,24 @@ class Metabox {
                 <label for="wp_metis_metabox_text_type_default"><?php esc_html_e('anderer Text', 'vgw-metis'); ?></label>
             </p>
             <hr/>
-			<?php if (! $isNew && $pixel && $pixel->active && $pixel->public_identification_id) : ?>
-                <p class="wp_metis_metabox_action_remove">
+			<?php if (! $isNew) : ?>
+                <p class="wp_metis_metabox_action_remove" <?php echo ( ! $pixel || ! $pixel->active || ! $pixel->public_identification_id ) ? 'style="display:none;"' : ''; ?>>
                     <button
                             id="wp_metis_metabox_pixel_action_remove"
                             class="button button-secondary"
-                            type="submit"
-                            form="post"
-                            formaction="post.php?wp_metis_metabox_action=remove_pixel"
+                            type="button"
                     >
 						<?php esc_html_e('Zählmarke entfernen', 'vgw-metis') ?>
                     </button>
                 </p>
 			<?php endif; ?>
 
-			<?php if (! $isNew && (! $pixel || ! $pixel->active)) : ?>
-                <p class="wp_metis_metabox_action_assign">
+			<?php if (! $isNew) : ?>
+                <p class="wp_metis_metabox_action_assign" <?php echo ( $pixel && $pixel->active ) ? 'style="display:none;"' : ''; ?>>
                     <button
                             id="wp_metis_metabox_pixel_action_assign"
                             class="button button-secondary"
-                            type="submit"
-                            form="post"
-                            formaction="post.php?wp_metis_metabox_action=assign_pixel"
+                            type="button"
                     >
 						<?php esc_html_e('Zählmarke automatisch zuweisen', 'vgw-metis') ?>
                     </button>
@@ -233,6 +229,8 @@ class Metabox {
 				'error_disable_pixel'          => esc_html__('Fehler beim ungültig setzen der bisherigen Zählmarke!', 'vgw-metis'),
 				'multiple_assignment'          => esc_html__('Diese Zählmarke wird bereits für einen anderen Text verwendet oder reserviert. Bitte beachten Sie, dass eine Zählmarke nur für Varianten (z.B. Übersetzungen) oder Teile des gleichen Textes verwendet werden darf.', 'vgw-metis' ),
 				'success'                      => esc_html__('Manuelle Zuweisung erfolgreich!', 'vgw-metis'),
+				'assign_success'               => esc_html__('Zählmarke wurde erfolgreich zugewiesen.', 'vgw-metis'),
+				'remove_success'               => esc_html__('Zählmarke wurde erfolgreich entfernt.', 'vgw-metis'),
 				'error_new_pixel_is_disabled'  => esc_html__('Fehler: Die neue Zählmarke ist ungültig.', 'vgw-metis'),
 				'status_valid'                 => Common::API_STATE_VALID,
 				'status_not_valid'             => Common::API_STATE_NOT_VALID,
@@ -344,29 +342,67 @@ class Metabox {
 
 		if ( in_array( $status, [ Assignment::ASSIGNED, Assignment::REASSIGNED, Assignment::REACTIVATED ], true ) ) {
 			$this->updatePostHistory( $post_id );
-			return $this->getAssignedPixelResponse( $post_id );
+			return $this->createPixelActionResponse(
+				$post_id,
+				'success',
+				true,
+				esc_html__( 'Pixel assigned successfully.', 'vgw-metis' )
+			);
 		}
 
-		if ( Assignment::SKIPPED === $status ) {
-			return [
-				'message' => esc_html__( 'Pixel is already assigned to this post.', 'vgw-metis' ),
-			];
+		if ( in_array( $status, [ Assignment::NONE, Assignment::SKIPPED ], true ) ) {
+			return $this->createPixelActionResponse(
+				$post_id,
+				'already-assigned',
+				true,
+				esc_html__( 'Pixel is already assigned to this post.', 'vgw-metis' )
+			);
 		}
 
 		wp_send_json_error( [ 'message' => esc_html__( 'Unable to assign pixel.', 'vgw-metis' ) ], 500 );
 	}
 
-	private function getAssignedPixelResponse( int $post_id ): array {
-		$pixelData = Assignment_Services::get_pixel_for_post( $post_id );
+	public function remove_pixel_action( int $post_id ): array {
+		$result = Assignment_Services::unassign_pixel_from_post( $post_id );
 
-		if ( ! $pixelData ) {
-			wp_send_json_error( [ 'message' => esc_html__( 'Pixel assignment could not be verified.', 'vgw-metis' ) ], 500 );
+		if ( $result === 0 ) {
+			return $this->createPixelActionResponse(
+				$post_id,
+				'no-pixel-removed',
+				false,
+				esc_html__( 'No pixel was removed from the post.', 'vgw-metis' )
+			);
 		}
 
+		if ( $result === true || $result === 1 ) {
+			return $this->createPixelActionResponse(
+				$post_id,
+				'removed',
+				false,
+				esc_html__( 'Pixel was successfully removed from the post.', 'vgw-metis' )
+			);
+		}
+
+		wp_send_json_error( [
+			'code'    => 'remove-failed',
+			'message' => esc_html__( 'Unable to remove pixel.', 'vgw-metis' ),
+		], 500 );
+	}
+
+	private function createPixelActionResponse( int $post_id, string $code, bool $assigned = false, string $message = '' ): array {
+		$pixel       = Services::get_pixel_for_post( $post_id, true );
+		$public_id   = $pixel ? $pixel->get_public_identification_id() : '';
+		$private_id  = $pixel ? $pixel->get_private_identification_id() : '';
+		$posts_count = $public_id ? DB_Pixels::get_assigned_posts_count( $public_id ) : 0;
+
 		return [
-			'public_identification_id'  => $pixelData->public_identification_id,
-			'private_identification_id' => $pixelData->private_identification_id,
-			'message'                   => esc_html__( 'Pixel assigned successfully.', 'vgw-metis' ),
+			'assigned'                  => $assigned,
+			'code'                      => $code,
+			'message'                   => $message,
+			'public_identification_id'  => $public_id,
+			'private_identification_id' => $private_id,
+			'posts_count'               => (int) $posts_count,
+			'text_length'               => (int) get_post_meta( $post_id, '_metis_text_length', true ),
 		];
 	}
 
@@ -423,26 +459,26 @@ class Metabox {
 
 	public function manual_assign_pixel_action( int $post_id, string $public_identification_id ): array {
 		if ( ! $public_identification_id || ! Common::is_valid_pixel_id_format( $public_identification_id ) ) {
-			return $this->createManualAssignmentResponse( 'invalid-format' );
+			return $this->createPixelActionResponse( $post_id, 'invalid-format' );
 		}
 
 		$current_pixel = DB_Pixels::get_pixel_by_post_id( $post_id );
 		$new_pixel     = DB_Pixels::get_pixel_by_public_identification_id( $public_identification_id );
 
 		if ( $new_pixel && $new_pixel->disabled ) {
-			return $this->createManualAssignmentResponse( 'error-new-pixel-is-disabled' );
+			return $this->createPixelActionResponse( $post_id, 'error-new-pixel-is-disabled' );
 		}
 
 		if ( $new_pixel && $new_pixel->post_id && (int) $new_pixel->post_id === $post_id ) {
-			return $this->createManualAssignmentResponse( 'error-has-same-post-id' );
+			return $this->createPixelActionResponse( $post_id, 'error-has-same-post-id' );
 		}
 
 		if ( ! $new_pixel && ! Services::insert_one_manual_pixel( $public_identification_id ) ) {
-			return $this->createManualAssignmentResponse( 'error-inserting-pixel' );
+			return $this->createPixelActionResponse( $post_id, 'error-inserting-pixel' );
 		}
 
 		if ( ! DB_Pixels::replace_pixel_for_post( $public_identification_id, $post_id ) ) {
-			return $this->createManualAssignmentResponse( 'error-assign-to-post-failed' );
+			return $this->createPixelActionResponse( $post_id, 'error-assign-to-post-failed' );
 		}
 
 		$this->updatePostHistory( $post_id );
@@ -456,14 +492,7 @@ class Metabox {
 		}
 
 		$code = DB_Pixels::get_assigned_posts_count( $public_identification_id ) > 1 ? 'multiple-assignment' : 'success';
-		return $this->createManualAssignmentResponse( $code, true );
-	}
-
-	private function createManualAssignmentResponse( string $code, bool $assigned = false ): array {
-		return [
-			'assigned' => $assigned,
-			'code'     => $code,
-		];
+		return $this->createPixelActionResponse( $post_id, $code, true, esc_html__( 'Manual assignment successful.', 'vgw-metis' ) );
 	}
 
 	/**

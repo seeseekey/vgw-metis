@@ -12,6 +12,113 @@
     'use strict';
     // execute when the DOM is ready
     $(document).ready(function () {
+        const $manualButton = $('#wp_metis_metabox_pixel_action_manual_assign');
+        const $assignButton = $('#wp_metis_metabox_pixel_action_assign');
+        const $removeButton = $('#wp_metis_metabox_pixel_action_remove');
+
+        if (!$manualButton.length) {
+            return;
+        }
+
+        let current_public_identification_id = $manualButton.data('current-public-identification-id') || '';
+        const post_id = $manualButton.data('post-id');
+        let posts_count = parseInt($manualButton.data('posts-count'), 10) || 0;
+        const nonce = $manualButton.data('nonce');
+
+        const codeMessages = {
+            'invalid-format': wp_metis_metabox_obj.invalid_format,
+            'removal-failed': wp_metis_metabox_obj.removal_failed,
+            'invalid-request': wp_metis_metabox_obj.invalid_request,
+            'open-id-required': wp_metis_metabox_obj.open_id_required,
+            'already-assigned': wp_metis_metabox_obj.already_assigned,
+            'assign-failed': wp_metis_metabox_obj.assign_failed,
+            'error-has-same-post-id': wp_metis_metabox_obj.error_has_same_post_id,
+            'error-assign-to-post-failed': wp_metis_metabox_obj.error_assign_to_post_failed,
+            'error-remove-pixel-from-post': wp_metis_metabox_obj.error_remove_pixel_from_post,
+            'error-new-pixel-is-disabled': wp_metis_metabox_obj.error_new_pixel_is_disabled,
+            'error-disable-pixel': wp_metis_metabox_obj.error_disable_pixel,
+            'error-inserting-pixel': wp_metis_metabox_obj.error_inserting_pixel,
+            'multiple-assignment': wp_metis_metabox_obj.multiple_assignment,
+            'remove-failed': wp_metis_metabox_obj.error_remove_pixel_from_post
+        };
+
+        function setBusy(isBusy) {
+            $manualButton.add($assignButton).add($removeButton).prop('disabled', isBusy);
+        }
+
+        function getSelectedTextType() {
+            return $('input[name="wp_metis_metabox_text_type"]:checked').val() || '';
+        }
+
+        function setPixelState(data) {
+            const publicId = data && data.public_identification_id ? data.public_identification_id : '';
+            const privateId = data && data.private_identification_id ? data.private_identification_id : '';
+            const textLength = data && typeof data.text_length !== 'undefined' ? data.text_length : '';
+
+            $('#wp_metis_metabox_public_id_value').text(publicId || '-');
+            $('#wp_metis_metabox_private_id_value').text(privateId || '-');
+            $('#wp_metis_metabox_text_length_value').text(textLength);
+
+            $('.wp_metis_metabox_public_id').toggle(!!publicId);
+            $('.wp_metis_metabox_private_id').toggle(!!publicId);
+            $('.wp_metis_metabox_char_count').toggle(!!publicId);
+            $assignButton.closest('.wp_metis_metabox_action_assign').toggle(!publicId);
+            $removeButton.closest('.wp_metis_metabox_action_remove').toggle(!!publicId);
+
+            current_public_identification_id = publicId || '-';
+            posts_count = data && typeof data.posts_count !== 'undefined' ? parseInt(data.posts_count, 10) || 0 : 0;
+            $manualButton
+                .data('current-public-identification-id', current_public_identification_id)
+                .data('posts-count', posts_count);
+        }
+
+        function showResponseMessage(data, fallbackMessage, isSuccess) {
+            if (!data) {
+                alert(wp_metis_metabox_obj.error_general);
+                return;
+            }
+
+            if (data.code === 'multiple-assignment') {
+                alert(wp_metis_metabox_obj.multiple_assignment);
+                alert(fallbackMessage || wp_metis_metabox_obj.success);
+                return;
+            }
+
+            const codeMessage = data.code ? codeMessages[data.code] : '';
+            const message = codeMessage || fallbackMessage || data.message || (isSuccess ? '' : wp_metis_metabox_obj.error_general);
+
+            if (message) {
+                alert(message);
+            }
+        }
+
+        function handleAjaxError(xhr) {
+            const data = xhr && xhr.responseJSON && xhr.responseJSON.data ? xhr.responseJSON.data : null;
+            showResponseMessage(data, null, false);
+        }
+
+        function postPixelAction(requestData, fallbackMessage) {
+            setBusy(true);
+
+            return $.ajax({
+                url: wp_metis_metabox_obj.ajax_url,
+                type: 'POST',
+                dataType: 'json',
+                data: requestData
+            }).done(function (response) {
+                const data = response && response.data ? response.data : null;
+
+                if (response && response.success && data) {
+                    setPixelState(data);
+                    showResponseMessage(data, fallbackMessage, true);
+                    return;
+                }
+
+                showResponseMessage(data, null, false);
+            }).fail(handleAjaxError).always(function () {
+                setBusy(false);
+            });
+        }
 
         // check if we already have a pixel and show disable message
         // yes > confirm to assign new one and disable old one
@@ -35,85 +142,32 @@
 
         // add the manual pixel or display various error messages
         function step_add_manual_pixel(new_pid, post_id, nonce) {
-            // wp ajax call to assign pixel
-            $.post(wp_metis_metabox_obj.ajax_url, {
-                    action: 'wp_metis_metabox_manual_assign_pixel',
-                    post_id: post_id,
-                    public_identification_id: new_pid,
-                    nonce: nonce
-                }, function (data) {
-                    // handle response data, show success or error messages
-                    console.log(data);
-                    const code = data && data.data ? data.data.code : null;
-                    if (code) {
-                        switch (code) {
-                            case 'invalid-format':
-                                alert(wp_metis_metabox_obj.invalid_format);
-                                break;
-                            case 'removal-failed':
-                                alert(wp_metis_metabox_obj.removal_failed);
-                                break;
-                            case 'invalid-request':
-                                alert(wp_metis_metabox_obj.invalid_request);
-                                break;
-                            case 'open-id-required':
-                                alert(wp_metis_metabox_obj.open_id_required);
-                                break;
-                            case 'already-assigned':
-                                alert(wp_metis_metabox_obj.already_assigned);
-                                break;
-                            case 'assign-failed':
-                                alert(wp_metis_metabox_obj.assign_failed);
-                                break;
-                            case 'error-has-same-post-id':
-                                alert(wp_metis_metabox_obj.error_has_same_post_id);
-                                break;
-                            case 'error-assign-to-post-failed':
-                                alert(wp_metis_metabox_obj.error_assign_to_post_failed);
-                                break;
-                            case 'error-remove-pixel-from-post':
-                                alert(wp_metis_metabox_obj.error_remove_pixel_from_post);
-                                break;
-                            case 'error-new-pixel-is-disabled':
-                                alert(wp_metis_metabox_obj.error_new_pixel_is_disabled);
-                                break;
-                            case 'error-disable-pixel':
-                                alert(wp_metis_metabox_obj.error_disable_pixel);
-                                break;
-                            case 'error-inserting-pixel':
-                                alert(wp_metis_metabox_obj.error_inserting_pixel);
-                                break;
-                            case 'multiple-assignment':
-                                alert(wp_metis_metabox_obj.multiple_assignment);
-                                alert(wp_metis_metabox_obj.success);
-                                document.getElementById('publish').click();
-                                break;
-                            case 'success':
-                                alert(wp_metis_metabox_obj.success);
-                                document.getElementById('publish').click();
-                                break;
-                            default:
-                                alert(wp_metis_metabox_obj.error_general);
-                                break;
-                        }
-                    } else {
-                        alert(wp_metis_metabox_obj.error_general);
-                        return;
-                    }
-                }
-            );
+            postPixelAction({
+                action: 'wp_metis_metabox_manual_assign_pixel',
+                post_id: post_id,
+                public_identification_id: new_pid,
+                nonce: nonce
+            }, wp_metis_metabox_obj.success);
         }
 
-        // get the current pid from data attribute
-        const current_public_identification_id = $('#wp_metis_metabox_pixel_action_manual_assign').data('current-public-identification-id');
-        // get the current post id from data attribute
-        const post_id = $('#wp_metis_metabox_pixel_action_manual_assign').data('post-id');
-        // get the count assigned posts for current pixel
-        const posts_count = $('#wp_metis_metabox_pixel_action_manual_assign').data('posts-count');
-        // get the nonce for sending ajax requests from data attribute
-        const nonce = $('#wp_metis_metabox_pixel_action_manual_assign').data('nonce');
+        $assignButton.on('click', function () {
+            postPixelAction({
+                action: 'assign_pixel_to_post',
+                post_id: post_id,
+                wp_metis_metabox_text_type: getSelectedTextType(),
+                security: nonce
+            }, wp_metis_metabox_obj.assign_success);
+        });
 
-        $('#wp_metis_metabox_pixel_action_manual_assign').on('click', () => {
+        $removeButton.on('click', function () {
+            postPixelAction({
+                action: 'remove_pixel_from_post',
+                post_id: post_id,
+                security: nonce
+            }, wp_metis_metabox_obj.remove_success);
+        });
+
+        $manualButton.on('click', () => {
             // ask the user to enter pid of the new pixel
             const new_pid = prompt(wp_metis_metabox_obj.enter_pixel_message);
 

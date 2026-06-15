@@ -6,7 +6,7 @@ function enqueue_vgw_metis_sidebar_script() {
     wp_enqueue_script(
         'vgw-metis-sidebar-script',
         plugins_url( '../../admin/js/vgw-metis-sidebar.js', __FILE__ ),
-        array( 'jquery', 'wp-plugins', 'wp-edit-post', 'wp-i18n', 'wp-element', 'wp-components' ),
+        array( 'jquery', 'wp-plugins', 'wp-edit-post', 'wp-i18n', 'wp-element', 'wp-components', 'wp-data' ),
         filemtime( plugin_dir_path( __FILE__ ) . '../../admin/js/vgw-metis-sidebar.js' ),
         true
     );
@@ -53,6 +53,9 @@ function enqueue_vgw_metis_sidebar_script() {
             'error_disable_pixel'          => esc_html__( 'Fehler beim ungültig setzen der bisherigen Zählmarke!', 'vgw-metis' ),
             'multiple_assignment'          => esc_html__( 'Diese Zählmarke wird bereits für einen anderen Text verwendet oder reserviert. Bitte beachten Sie, dass eine Zählmarke nur für Varianten (z.B. Übersetzungen) oder Teile des gleichen Textes verwendet werden darf.', 'vgw-metis' ),
             'success'                      => esc_html__( 'Manuelle Zuweisung erfolgreich!', 'vgw-metis' ),
+            'assign_success'               => esc_html__( 'Zählmarke wurde erfolgreich zugewiesen.', 'vgw-metis' ),
+            'remove_success'               => esc_html__( 'Zählmarke wurde erfolgreich entfernt.', 'vgw-metis' ),
+            'save_error'                   => esc_html__( 'Der Beitrag konnte vor der Zählmarken-Zuweisung nicht gespeichert werden.', 'vgw-metis' ),
             'error_new_pixel_is_disabled'  => esc_html__( 'Fehler: Die neue Zählmarke ist ungültig.', 'vgw-metis' ),
             'status_valid'                 => Common::API_STATE_VALID,
             'status_not_valid'             => Common::API_STATE_NOT_VALID,
@@ -63,6 +66,7 @@ function enqueue_vgw_metis_sidebar_script() {
             'status_not_valid_message'     => esc_html__( 'Fehler: Ungültiges Zählmarken-Format', 'vgw-metis' ),
             'not_own_pixel_confirmation'   => esc_html__( 'Es handelt sich nicht um Ihre eigene Zählmarke, möchten Sie diese trotzdem hinzufügen?', 'vgw-metis' ),
             'error_get_posts_count'        => esc_html__( 'Fehler: Anzahl der Beiträge dieser Zählmarke konnte nicht gefunden werden.', 'vgw-metis' ),
+            'assign_failed'                => esc_html__( 'Fehler: Fehler beim Zuweisen der Zählmarke.', 'vgw-metis' ),
             'invalid_format'               => esc_html__( 'Fehler: Ungültiges Zählmarken-Format.', 'vgw-metis' ),
             'removal_failed'               => esc_html__( 'Fehler: Ein vorhandener Pixel konnte nicht erfolgreich entfernt werden.', 'vgw-metis' ),
             'invalid_request'              => esc_html__( 'Fehler: Ungültige Anfrage.', 'vgw-metis' ),
